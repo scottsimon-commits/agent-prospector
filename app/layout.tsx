@@ -14,16 +14,17 @@ export const metadata: Metadata = {
     default: "Agent Prospector",
     template: "%s | Agent Prospector",
   },
-  description: "Discover, build, and deploy AI agents — powered by Claude",
+  description: "Discover, build, and deploy AI agents — prospect opportunities via AI chat, scaffold TypeScript code, deploy to GitHub & Vercel in one click.",
   openGraph: {
     title: "Agent Prospector",
-    description: "Discover, build, and deploy AI agents — powered by Claude",
+    description: "Discover, build, and deploy AI agents — prospect opportunities via AI chat, scaffold TypeScript code, deploy to GitHub & Vercel in one click.",
     type: "website",
+    url: "https://agent-prospector.vercel.app",
   },
   twitter: {
     card: "summary_large_image",
     title: "Agent Prospector",
-    description: "Discover, build, and deploy AI agents — powered by Claude",
+    description: "Discover, build, and deploy AI agents in one click.",
   },
 };
 

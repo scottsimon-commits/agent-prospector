@@ -19,7 +19,9 @@ export default function StatusBar() {
     fetch('/api/status').then((r) => r.json()).then(setStatus).catch(() => {})
   }, [])
 
-  if (!status) return null
+  if (!status) return (
+    <div className="flex items-center gap-3 rounded-lg px-3 py-2 border bg-muted/30 border-muted animate-pulse h-9" />
+  )
 
   const items = [
     {

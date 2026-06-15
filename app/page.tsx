@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { Bot, Search, Wrench, Database, ArrowRight, Zap, Code2, Rocket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import StatusBar from '@/components/StatusBar'
+import DashboardStats from '@/components/DashboardStats'
 
 const features = [
   {
@@ -53,6 +54,8 @@ export default function DashboardPage() {
     <div className="max-w-4xl mx-auto space-y-10">
       {/* Status bar */}
       <StatusBar />
+      {/* Live stats */}
+      <DashboardStats />
       {/* Hero */}
       <div className="space-y-4 pt-2">
         <div className="inline-flex items-center gap-2 rounded-full border bg-muted/50 px-3 py-1 text-xs text-muted-foreground">
