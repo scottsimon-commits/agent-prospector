@@ -4,20 +4,39 @@ import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Send, Loader2, Zap } from 'lucide-react'
+import { Send, Loader2, Zap, Bot, User, AlertTriangle } from 'lucide-react'
 import type { ChatMessage, OpportunityCard } from '@/lib/types'
 import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 
 function parseOpportunities(text: string): OpportunityCard[] {
   const matches = text.match(/<opportunity>([\s\S]*?)<\/opportunity>/g) ?? []
   return matches.flatMap((m) => {
     try {
-      const json = m.replace(/<\/?opportunity>/g, '').trim()
-      return [JSON.parse(json) as OpportunityCard]
+      return [JSON.parse(m.replace(/<\/?opportunity>/g, '').trim()) as OpportunityCard]
     } catch {
       return []
     }
   })
+}
+
+// Robust SSE text extraction — handles multi-byte chunks and partial lines
+function extractTextFromSSEChunk(chunk: string): string {
+  let out = ''
+  const lines = chunk.split('\n')
+  for (const line of lines) {
+    if (!line.startsWith('data: ')) continue
+    const payload = line.slice(6).trim()
+    if (!payload || payload === '[DONE]') continue
+    try {
+      const evt = JSON.parse(payload)
+      // content_block_delta carries the streaming text
+      if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
+        out += evt.delta.text ?? ''
+      }
+    } catch {}
+  }
+  return out
 }
 
 export default function ProspectorChat() {
@@ -25,7 +44,9 @@ export default function ProspectorChat() {
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [opportunities, setOpportunities] = useState<OpportunityCard[]>([])
+  const [apiMissing, setApiMissing] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -39,6 +60,7 @@ export default function ProspectorChat() {
     setMessages(newMessages)
     setInput('')
     setLoading(true)
+    setApiMissing(false)
 
     try {
       const res = await fetch('/api/prospect', {
@@ -47,125 +69,189 @@ export default function ProspectorChat() {
         body: JSON.stringify({ messages: newMessages }),
       })
 
-      if (!res.ok) {
-        const err = await res.text()
-        setMessages((prev) => [...prev, { role: 'assistant', content: `Error: ${err}` }])
+      if (res.status === 503) {
+        setApiMissing(true)
+        setMessages((prev) => prev.slice(0, -1))
         return
       }
 
-      const reader = res.body!.getReader()
+      if (!res.ok) {
+        toast.error('Failed to get a response. Please try again.')
+        setMessages((prev) => prev.slice(0, -1))
+        return
+      }
+
+      if (!res.body) return
+      const reader = res.body.getReader()
       const decoder = new TextDecoder()
       let assistantText = ''
+      let buffer = ''
 
       setMessages((prev) => [...prev, { role: 'assistant', content: '' }])
 
       while (true) {
         const { done, value } = await reader.read()
         if (done) break
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n').filter((l) => l.startsWith('data: '))
-        for (const line of lines) {
-          const data = line.slice(6)
-          if (data === '[DONE]') break
-          try {
-            const parsed = JSON.parse(data)
-            const delta = parsed?.delta?.text ?? ''
-            assistantText += delta
-            setMessages((prev) => [
-              ...prev.slice(0, -1),
-              { role: 'assistant', content: assistantText },
-            ])
-          } catch {}
+        buffer += decoder.decode(value, { stream: true })
+
+        // Process complete lines only — avoids splitting mid-JSON
+        const lastNewline = buffer.lastIndexOf('\n')
+        if (lastNewline === -1) continue
+        const toProcess = buffer.slice(0, lastNewline + 1)
+        buffer = buffer.slice(lastNewline + 1)
+
+        const delta = extractTextFromSSEChunk(toProcess)
+        if (delta) {
+          assistantText += delta
+          setMessages((prev) => [
+            ...prev.slice(0, -1),
+            { role: 'assistant', content: assistantText },
+          ])
         }
       }
 
+      // Process any remaining buffer
+      const remaining = extractTextFromSSEChunk(buffer)
+      if (remaining) {
+        assistantText += remaining
+        setMessages((prev) => [
+          ...prev.slice(0, -1),
+          { role: 'assistant', content: assistantText },
+        ])
+      }
+
       const found = parseOpportunities(assistantText)
-      if (found.length) setOpportunities((prev) => [...prev, ...found])
+      if (found.length) {
+        setOpportunities((prev) => [...prev, ...found])
+        toast.success(`${found.length} agent opportunit${found.length === 1 ? 'y' : 'ies'} found!`)
+      }
+    } catch (err) {
+      toast.error('Connection error. Please try again.')
+      console.error(err)
     } finally {
       setLoading(false)
+      textareaRef.current?.focus()
     }
   }
 
   const complexityColor: Record<string, string> = {
-    low: 'bg-green-100 text-green-800',
-    medium: 'bg-yellow-100 text-yellow-800',
-    high: 'bg-red-100 text-red-800',
+    low: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+    medium: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+    high: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      {/* Chat */}
-      <div className="flex flex-col gap-3 min-h-[300px] max-h-[500px] overflow-y-auto border rounded-xl p-4 bg-muted/30">
+    <div className="flex flex-col gap-5">
+      {/* API key warning */}
+      {apiMissing && (
+        <div className="flex items-start gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <div>
+            <p className="font-medium">ANTHROPIC_API_KEY not configured</p>
+            <p className="text-yellow-700 mt-0.5">
+              Add your API key to the{' '}
+              <a href="https://vercel.com/dashboard" target="_blank" rel="noopener noreferrer" className="underline">
+                Vercel environment variables
+              </a>{' '}
+              to enable the Prospector.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Chat window */}
+      <div className="flex flex-col gap-4 min-h-[320px] max-h-[480px] overflow-y-auto rounded-xl border bg-background p-4">
         {messages.length === 0 && (
-          <p className="text-muted-foreground text-sm text-center mt-8">
-            Tell me about your role and daily workflow — I&apos;ll find where agents can help.
-          </p>
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-8">
+            <div className="rounded-full bg-primary/10 p-4">
+              <Zap className="h-8 w-8 text-primary" />
+            </div>
+            <div>
+              <p className="font-medium text-sm">Ready to prospect</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+                Describe your role and daily workflow — I&apos;ll identify your best opportunities for AI automation.
+              </p>
+            </div>
+          </div>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div
-              className={`max-w-[80%] rounded-xl px-4 py-2 text-sm whitespace-pre-wrap ${
-                m.role === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-background border shadow-sm'
-              }`}
-            >
-              {m.content}
+          <div key={i} className={`flex gap-3 ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+            <div className={`shrink-0 h-7 w-7 rounded-full flex items-center justify-center text-xs ${
+              m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted border'
+            }`}>
+              {m.role === 'user' ? <User className="h-3.5 w-3.5" /> : <Bot className="h-3.5 w-3.5" />}
+            </div>
+            <div className={`max-w-[78%] rounded-2xl px-4 py-2.5 text-sm whitespace-pre-wrap leading-relaxed ${
+              m.role === 'user'
+                ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                : 'bg-muted rounded-tl-sm'
+            }`}>
+              {m.content || <Loader2 className="h-3.5 w-3.5 animate-spin" />}
             </div>
           </div>
         ))}
-        {loading && (
-          <div className="flex justify-start">
-            <div className="bg-background border shadow-sm rounded-xl px-4 py-2">
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            </div>
-          </div>
-        )}
         <div ref={bottomRef} />
       </div>
 
       {/* Input */}
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-end">
         <Textarea
+          ref={textareaRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() } }}
-          placeholder="Describe your role, tools you use, and repetitive tasks..."
-          className="resize-none"
-          rows={2}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
+          }}
+          placeholder="Describe your role, tools, and repetitive tasks… (Enter to send)"
+          className="resize-none min-h-[80px]"
+          rows={3}
         />
-        <Button onClick={send} disabled={loading || !input.trim()} size="icon" className="h-auto">
-          <Send className="h-4 w-4" />
+        <Button
+          onClick={send}
+          disabled={loading || !input.trim()}
+          size="icon"
+          className="h-10 w-10 shrink-0"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
       </div>
 
       {/* Opportunity Cards */}
       {opportunities.length > 0 && (
-        <div className="mt-2">
-          <h3 className="font-semibold mb-3 flex items-center gap-2">
+        <div className="mt-2 space-y-3">
+          <h3 className="font-semibold flex items-center gap-2 text-sm">
             <Zap className="h-4 w-4 text-yellow-500" />
-            Agent Opportunities Found
+            {opportunities.length} Agent {opportunities.length === 1 ? 'Opportunity' : 'Opportunities'} Found
           </h3>
           <div className="grid gap-3 sm:grid-cols-2">
             {opportunities.map((opp, i) => (
-              <div key={i} className="border rounded-xl p-4 bg-background shadow-sm hover:shadow-md transition-shadow">
+              <div
+                key={i}
+                className="rounded-xl border bg-card p-4 shadow-sm hover:shadow-md transition-all hover:-translate-y-0.5"
+              >
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <h4 className="font-medium text-sm">{opp.name}</h4>
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${complexityColor[opp.complexity]}`}>
+                  <h4 className="font-medium text-sm leading-snug">{opp.name}</h4>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${complexityColor[opp.complexity ?? 'medium']}`}>
                     {opp.complexity}
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-3">{opp.description}</p>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{opp.description}</p>
                 <div className="flex flex-wrap gap-1 mb-3">
-                  {opp.tools.map((t) => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}
+                  {(opp.tools ?? []).map((t) => (
+                    <Badge key={t} variant="secondary" className="text-xs px-2">{t}</Badge>
+                  ))}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-xs text-green-600 font-medium">💡 {opp.estimatedValue}</span>
+                  <span className="text-xs text-emerald-600 font-medium">💡 {opp.estimatedValue}</span>
                   <Button
                     size="sm"
                     variant="outline"
-                    className="text-xs h-7"
-                    onClick={() => router.push(`/build?name=${encodeURIComponent(opp.name)}&desc=${encodeURIComponent(opp.description)}&tools=${encodeURIComponent(opp.tools.join(','))}`)}
+                    className="text-xs h-7 gap-1"
+                    onClick={() =>
+                      router.push(
+                        `/build?name=${encodeURIComponent(opp.name)}&desc=${encodeURIComponent(opp.description)}&tools=${encodeURIComponent((opp.tools ?? []).join(','))}`
+                      )
+                    }
                   >
                     Build this →
                   </Button>

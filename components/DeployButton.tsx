@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { GitBranch, Globe, Loader2, Rocket } from 'lucide-react'
 import type { DeployResult } from '@/lib/types'
+import { toast } from 'sonner'
 
 interface DeployButtonProps {
   agentId: string
@@ -29,6 +30,7 @@ export default function DeployButton({ agentId, agentName }: DeployButtonProps) 
 
   async function deploy() {
     setLoading(true)
+    const toastId = toast.loading('Deploying agent…')
     try {
       const res = await fetch('/api/deploy', {
         method: 'POST',
@@ -36,7 +38,15 @@ export default function DeployButton({ agentId, agentName }: DeployButtonProps) 
         body: JSON.stringify({ agentId, repoName }),
       })
       const data = await res.json()
-      setResult(res.ok ? { success: true, ...data } : { success: false, error: data.error })
+      if (res.ok) {
+        setResult({ success: true, ...data })
+        toast.success('Agent deployed!', { id: toastId, description: data.githubUrl })
+      } else {
+        setResult({ success: false, error: data.error })
+        toast.error('Deploy failed', { id: toastId, description: data.error })
+      }
+    } catch {
+      toast.error('Network error', { id: toastId })
     } finally {
       setLoading(false)
     }

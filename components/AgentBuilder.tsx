@@ -13,6 +13,7 @@ import { Loader2, ChevronRight, ChevronLeft, Wand2 } from 'lucide-react'
 import CodePreview from './CodePreview'
 import DeployButton from './DeployButton'
 import type { AgentSpec, AgentTool, AgentTrigger, AgentFormat, Agent } from '@/lib/types'
+import { toast } from 'sonner'
 
 const TOOLS: { id: AgentTool; label: string }[] = [
   { id: 'web-search', label: 'Web Search' },
@@ -54,6 +55,7 @@ export default function AgentBuilder({ initialName = '', initialDesc = '', initi
 
   async function generate() {
     setLoading(true)
+    const toastId = toast.loading('Generating agent code…')
     try {
       const res = await fetch('/api/build', {
         method: 'POST',
@@ -64,7 +66,14 @@ export default function AgentBuilder({ initialName = '', initialDesc = '', initi
       if (res.ok) {
         setAgent(data)
         setStep(3)
+        toast.success('Agent code generated!', { id: toastId })
+      } else if (res.status === 503) {
+        toast.error('ANTHROPIC_API_KEY not configured', { id: toastId, description: 'Add it in Vercel environment variables.' })
+      } else {
+        toast.error(data.error ?? 'Generation failed', { id: toastId })
       }
+    } catch {
+      toast.error('Network error — please try again', { id: toastId })
     } finally {
       setLoading(false)
     }
@@ -174,11 +183,18 @@ export default function AgentBuilder({ initialName = '', initialDesc = '', initi
       {/* Step 3 — Generated Code */}
       {step === 3 && agent && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold">✅ Agent Generated</h3>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-semibold flex items-center gap-2">
+                <span className="text-green-500">✓</span> Agent Generated
+              </h3>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Saved to registry · Copy, download, or deploy below
+              </p>
+            </div>
             <DeployButton agentId={agent.id} agentName={agent.spec.name} />
           </div>
-          <CodePreview code={agent.code} />
+          <CodePreview code={agent.code} filename={`${agent.spec.name.toLowerCase().replace(/\s+/g, '-')}.ts`} />
           <Button variant="outline" onClick={() => { setStep(1); setAgent(null) }} className="w-full">
             Build Another Agent
           </Button>
