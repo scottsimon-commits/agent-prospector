@@ -234,11 +234,14 @@ export default function AgentBuilder({ initialName = '', initialDesc = '', initi
               </p>
             </div>
             <DeployButton
-            agentId={agent.id}
-            agentName={agent.spec.name}
-            agentCode={agent.code}
-            agentDescription={agent.spec.description}
-          />
+              agentId={agent.id}
+              agentName={agent.spec.name}
+              agentCode={agent.code}
+              agentDescription={agent.spec.description}
+              onSuccess={(githubUrl, vercelUrl) => {
+                persistAgent({ ...agent, status: 'deployed', githubUrl, vercelUrl, updatedAt: new Date().toISOString() })
+              }}
+            />
           </div>
           <CodePreview code={agent.code} filename={`${agent.spec.name.toLowerCase().replace(/\s+/g, '-')}.ts`} />
           <Button variant="outline" onClick={() => { setStep(1); setAgent(null) }} className="w-full">
