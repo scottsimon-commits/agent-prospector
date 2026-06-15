@@ -1,13 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getClient, BUILD_SYSTEM_PROMPT } from '@/lib/anthropic'
 import { saveAgent } from '@/lib/registry'
-import type { AgentSpec, Agent } from '@/lib/types'
+import { BuildRequestSchema } from '@/lib/validation'
+import type { Agent } from '@/lib/types'
 import { randomUUID } from 'crypto'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
-  const { spec }: { spec: AgentSpec } = await req.json()
+  let body: unknown
+  try {
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
+  }
+
+  const parsed = BuildRequestSchema.safeParse(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+  }
+
+  const { spec } = parsed.data
 
   let client
   try {
