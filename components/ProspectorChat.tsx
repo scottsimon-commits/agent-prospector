@@ -30,11 +30,15 @@ function extractTextFromSSEChunk(chunk: string): string {
     if (!payload || payload === '[DONE]') continue
     try {
       const evt = JSON.parse(payload)
-      // content_block_delta carries the streaming text
-      if (evt.type === 'content_block_delta' && evt.delta?.type === 'text_delta') {
-        out += evt.delta.text ?? ''
+      // Normalized format from our API route: { text: "..." }
+      if (typeof evt.text === 'string') {
+        out += evt.text
       }
-    } catch {}
+      // Throw on server-reported errors
+      if (evt.error) throw new Error(evt.error)
+    } catch (e) {
+      if (e instanceof Error && e.message !== 'Unexpected token') throw e
+    }
   }
   return out
 }
