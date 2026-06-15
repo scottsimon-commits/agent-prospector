@@ -1,5 +1,11 @@
+import type { Metadata } from 'next'
 import ProspectorChat from '@/components/ProspectorChat'
 import { Search } from 'lucide-react'
+
+export const metadata: Metadata = {
+  title: 'Prospect',
+  description: 'Discover where AI agents can save you the most time',
+}
 
 export default function ProspectPage() {
   return (

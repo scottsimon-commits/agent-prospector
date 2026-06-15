@@ -1,10 +1,19 @@
 import { NextRequest } from 'next/server'
 import { getClient, PROSPECT_SYSTEM_PROMPT } from '@/lib/anthropic'
 import { ProspectRequestSchema } from '@/lib/validation'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
+  const { allowed, remaining } = rateLimit(getClientIp(req), 20, 60_000)
+  if (!allowed) {
+    return new Response('Rate limit exceeded. Try again in a minute.', {
+      status: 429,
+      headers: { 'Retry-After': '60', 'X-RateLimit-Remaining': String(remaining) },
+    })
+  }
+
   let body: unknown
   try {
     body = await req.json()

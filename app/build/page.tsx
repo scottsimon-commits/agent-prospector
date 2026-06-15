@@ -1,6 +1,12 @@
+import type { Metadata } from 'next'
 import AgentBuilder from '@/components/AgentBuilder'
 import { Wrench } from 'lucide-react'
 import type { AgentTool } from '@/lib/types'
+
+export const metadata: Metadata = {
+  title: 'Build',
+  description: 'Generate production-ready AI agent code in 3 steps',
+}
 
 interface BuildPageProps {
   searchParams: Promise<{ name?: string; desc?: string; tools?: string }>

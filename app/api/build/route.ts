@@ -2,12 +2,18 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getClient, BUILD_SYSTEM_PROMPT } from '@/lib/anthropic'
 import { saveAgent } from '@/lib/registry'
 import { BuildRequestSchema } from '@/lib/validation'
+import { rateLimit, getClientIp } from '@/lib/rate-limit'
 import type { Agent } from '@/lib/types'
 import { randomUUID } from 'crypto'
 
 export const runtime = 'nodejs'
 
 export async function POST(req: NextRequest) {
+  const { allowed } = rateLimit(getClientIp(req), 10, 60_000)
+  if (!allowed) {
+    return NextResponse.json({ error: 'Rate limit exceeded. Try again in a minute.' }, { status: 429 })
+  }
+
   let body: unknown
   try {
     body = await req.json()
