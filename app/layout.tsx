@@ -4,6 +4,7 @@ import "./globals.css";
 import Link from "next/link";
 import { Bot, Search, Wrench, LayoutGrid, Database } from "lucide-react";
 import { Toaster } from "sonner";
+import { AgentStoreProvider } from "@/components/AgentStoreProvider";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -89,7 +90,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {/* Main content */}
           <main className="flex-1 pt-16 md:pt-0 overflow-auto">
             <div className="p-4 md:p-6 max-w-screen-xl mx-auto">
-              {children}
+              <AgentStoreProvider>
+                {children}
+              </AgentStoreProvider>
             </div>
           </main>
         </div>

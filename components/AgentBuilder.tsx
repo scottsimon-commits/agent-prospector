@@ -14,6 +14,7 @@ import CodePreview from './CodePreview'
 import DeployButton from './DeployButton'
 import type { AgentSpec, AgentTool, AgentTrigger, AgentFormat, Agent } from '@/lib/types'
 import { toast } from 'sonner'
+import { useAgentStore } from './AgentStoreProvider'
 
 const TOOLS: { id: AgentTool; label: string }[] = [
   { id: 'web-search', label: 'Web Search' },
@@ -36,6 +37,7 @@ export default function AgentBuilder({ initialName = '', initialDesc = '', initi
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [agent, setAgent] = useState<Agent | null>(null)
+  const { saveAgent: persistAgent } = useAgentStore()
 
   const [spec, setSpec] = useState<AgentSpec>({
     name: initialName,
@@ -65,6 +67,7 @@ export default function AgentBuilder({ initialName = '', initialDesc = '', initi
       const data = await res.json()
       if (res.ok) {
         setAgent(data)
+        persistAgent(data)
         setStep(3)
         toast.success('Agent code generated!', { id: toastId })
       } else if (res.status === 503) {

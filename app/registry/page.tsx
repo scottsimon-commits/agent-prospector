@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Database, RefreshCw, Code2, Trash2, Globe, GitBranch } from 'lucide-react'
+import { useState } from 'react'
+import { Database, Code2, Trash2, Globe, GitBranch } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -9,38 +9,29 @@ import type { Agent } from '@/lib/types'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import CodePreview from '@/components/CodePreview'
+import { useAgentStore } from '@/components/AgentStoreProvider'
+import DeployButton from '@/components/DeployButton'
 
 export default function RegistryPage() {
-  const [agents, setAgents] = useState<Agent[]>([])
-  const [loading, setLoading] = useState(true)
+  const { agents, deleteAgent, saveAgent } = useAgentStore()
   const [preview, setPreview] = useState<Agent | null>(null)
 
-  async function load() {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/agents')
-      setAgents(await res.json())
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function del(id: string, name: string) {
-    await fetch('/api/agents', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id }),
-    })
-    setAgents((prev) => prev.filter((a) => a.id !== id))
+  function del(id: string, name: string) {
+    deleteAgent(id)
     toast.success(`Deleted "${name}"`)
   }
-
-  useEffect(() => { load() }, [])
 
   const statusColor: Record<string, string> = {
     draft: 'bg-gray-100 text-gray-700 border-gray-200',
     deployed: 'bg-blue-100 text-blue-700 border-blue-200',
     live: 'bg-green-100 text-green-700 border-green-200',
+  }
+
+  function handleDeploySuccess(agentId: string, githubUrl: string, vercelUrl?: string) {
+    const agent = agents.find((a) => a.id === agentId)
+    if (agent) {
+      saveAgent({ ...agent, status: 'deployed', githubUrl, vercelUrl, updatedAt: new Date().toISOString() })
+    }
   }
 
   return (
@@ -53,32 +44,14 @@ export default function RegistryPage() {
           </h1>
           <p className="text-muted-foreground text-sm">
             {agents.length > 0
-              ? `${agents.length} agent${agents.length === 1 ? '' : 's'} · Build more in the `
+              ? `${agents.length} agent${agents.length === 1 ? '' : 's'} · Persisted in your browser · Build more in the `
               : 'No agents yet · Build one in the '}
             <Link href="/build" className="underline text-foreground">Builder</Link>
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading} className="gap-2">
-          <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
       </div>
 
-      {loading ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl border bg-card p-4 space-y-3 animate-pulse">
-              <div className="h-4 bg-muted rounded w-2/3" />
-              <div className="h-3 bg-muted rounded w-full" />
-              <div className="h-3 bg-muted rounded w-4/5" />
-              <div className="flex gap-2 pt-1">
-                <div className="h-5 bg-muted rounded w-16" />
-                <div className="h-5 bg-muted rounded w-16" />
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : agents.length === 0 ? (
+      {agents.length === 0 ? (
         <div className="rounded-2xl border bg-muted/20 p-12 text-center space-y-4">
           <div className="inline-flex rounded-full bg-muted p-4">
             <Database className="h-8 w-8 text-muted-foreground" />
@@ -154,6 +127,15 @@ export default function RegistryPage() {
                             <Globe className="h-3 w-3" />
                           </Button>
                         </a>
+                      )}
+                      {agent.status === 'draft' && (
+                        <DeployButton
+                          agentId={agent.id}
+                          agentName={agent.spec.name}
+                          agentCode={agent.code}
+                          agentDescription={agent.spec.description}
+                          onSuccess={(githubUrl, vercelUrl) => handleDeploySuccess(agent.id, githubUrl, vercelUrl)}
+                        />
                       )}
                       <Button
                         size="sm" variant="ghost"
