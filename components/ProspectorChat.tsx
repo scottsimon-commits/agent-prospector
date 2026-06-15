@@ -166,15 +166,31 @@ export default function ProspectorChat() {
       {/* Chat window */}
       <div className="flex flex-col gap-4 min-h-[320px] max-h-[480px] overflow-y-auto rounded-xl border bg-background p-4">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-3 text-center py-8">
+          <div className="flex flex-col items-center justify-center h-full gap-4 text-center py-6">
             <div className="rounded-full bg-primary/10 p-4">
               <Zap className="h-8 w-8 text-primary" />
             </div>
             <div>
               <p className="font-medium text-sm">Ready to prospect</p>
               <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-                Describe your role and daily workflow — I&apos;ll identify your best opportunities for AI automation.
+                Describe your role and daily workflow — I&apos;ll identify your best AI agent opportunities.
               </p>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2 max-w-sm">
+              {[
+                "I'm a software engineer who reviews PRs and writes code daily",
+                "I'm a marketer who tracks campaigns and creates weekly reports",
+                "I'm a founder doing customer support and outreach",
+                "I'm a data analyst cleaning spreadsheets and generating insights",
+              ].map((prompt) => (
+                <button
+                  key={prompt}
+                  onClick={() => setInput(prompt)}
+                  className="text-xs border rounded-full px-3 py-1.5 text-muted-foreground hover:text-foreground hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                >
+                  {prompt}
+                </button>
+              ))}
             </div>
           </div>
         )}

@@ -6,6 +6,8 @@ import { Bot } from "lucide-react";
 import { Toaster } from "sonner";
 import { AgentStoreProvider } from "@/components/AgentStoreProvider";
 import { SidebarNav, MobileNav } from "@/components/NavLinks";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -30,8 +32,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className="h-full">
+    <html lang="en" className="h-full" suppressHydrationWarning>
       <body className={`${geist.className} min-h-full antialiased`}>
+        <ThemeProvider>
         <div className="flex min-h-screen">
           {/* Sidebar — hidden on mobile, visible md+ */}
           <aside className="hidden md:flex w-56 border-r bg-muted/20 flex-col gap-0.5 p-3 shrink-0 sticky top-0 h-screen overflow-y-auto">
@@ -42,10 +45,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <span className="font-semibold text-sm tracking-tight">Agent Prospector</span>
             </Link>
             <SidebarNav />
-            <div className="mt-auto pt-4 px-2">
+            <div className="mt-auto pt-4 px-2 flex items-center justify-between">
               <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
-                Powered by OpenRouter · Deploy to Vercel
+                Powered by OpenRouter
               </p>
+              <ThemeToggle />
             </div>
           </aside>
 
@@ -58,7 +62,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 </div>
                 <span className="font-semibold text-sm">Agent Prospector</span>
               </Link>
-              <MobileNav />
+              <div className="flex items-center gap-1">
+                <MobileNav />
+                <ThemeToggle />
+              </div>
             </div>
           </div>
 
@@ -72,6 +79,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </main>
         </div>
         <Toaster richColors position="bottom-right" />
+        </ThemeProvider>
       </body>
     </html>
   );
