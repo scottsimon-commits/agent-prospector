@@ -151,13 +151,13 @@ export default function ProspectorChat() {
         <div className="flex items-start gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4 text-sm text-yellow-800">
           <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
           <div>
-            <p className="font-medium">ANTHROPIC_API_KEY not configured</p>
+            <p className="font-medium">AI provider not configured</p>
             <p className="text-yellow-700 mt-0.5">
-              Add your API key to the{' '}
+              Add <code className="bg-yellow-100 px-1 rounded">OPENROUTER_API_KEY</code> or <code className="bg-yellow-100 px-1 rounded">ANTHROPIC_API_KEY</code> to{' '}
               <a href="https://vercel.com/dashboard" target="_blank" rel="noopener noreferrer" className="underline">
                 Vercel environment variables
-              </a>{' '}
-              to enable the Prospector.
+              </a>
+              .
             </p>
           </div>
         </div>

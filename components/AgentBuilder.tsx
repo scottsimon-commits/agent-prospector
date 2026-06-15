@@ -9,7 +9,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { Loader2, ChevronRight, ChevronLeft, Wand2 } from 'lucide-react'
+import { Loader2, ChevronRight, ChevronLeft, Wand2, Sparkles } from 'lucide-react'
 import CodePreview from './CodePreview'
 import DeployButton from './DeployButton'
 import type { AgentSpec, AgentTool, AgentTrigger, AgentFormat, Agent } from '@/lib/types'
@@ -36,6 +36,7 @@ interface AgentBuilderProps {
 export default function AgentBuilder({ initialName = '', initialDesc = '', initialTools = [] }: AgentBuilderProps) {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
+  const [suggestingPrompt, setSuggestingPrompt] = useState(false)
   const [agent, setAgent] = useState<Agent | null>(null)
   const { saveAgent: persistAgent } = useAgentStore()
 
@@ -55,6 +56,28 @@ export default function AgentBuilder({ initialName = '', initialDesc = '', initi
     }))
   }
 
+  async function suggestPrompt() {
+    setSuggestingPrompt(true)
+    try {
+      const res = await fetch('/api/suggest-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: spec.name, description: spec.description, tools: spec.tools }),
+      })
+      const data = await res.json()
+      if (res.ok && data.prompt) {
+        setSpec((s) => ({ ...s, systemPrompt: data.prompt }))
+        toast.success('Prompt suggested!')
+      } else {
+        toast.error('Could not generate suggestion')
+      }
+    } catch {
+      toast.error('Network error')
+    } finally {
+      setSuggestingPrompt(false)
+    }
+  }
+
   async function generate() {
     setLoading(true)
     const toastId = toast.loading('Generating agent code…')
@@ -71,7 +94,7 @@ export default function AgentBuilder({ initialName = '', initialDesc = '', initi
         setStep(3)
         toast.success('Agent code generated!', { id: toastId })
       } else if (res.status === 503) {
-        toast.error('ANTHROPIC_API_KEY not configured', { id: toastId, description: 'Add it in Vercel environment variables.' })
+        toast.error('AI provider not configured', { id: toastId, description: 'Add OPENROUTER_API_KEY or ANTHROPIC_API_KEY in Vercel environment variables.' })
       } else {
         toast.error(data.error ?? 'Generation failed', { id: toastId })
       }
@@ -159,8 +182,23 @@ export default function AgentBuilder({ initialName = '', initialDesc = '', initi
       {step === 2 && (
         <div className="space-y-4">
           <div>
-            <Label htmlFor="prompt">System Prompt</Label>
-            <p className="text-xs text-muted-foreground mt-0.5 mb-2">
+            <div className="flex items-center justify-between mb-1">
+              <Label htmlFor="prompt">System Prompt</Label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                onClick={suggestPrompt}
+                disabled={suggestingPrompt}
+              >
+                {suggestingPrompt
+                  ? <Loader2 className="h-3 w-3 animate-spin" />
+                  : <Sparkles className="h-3 w-3 text-yellow-500" />}
+                {suggestingPrompt ? 'Suggesting…' : 'Suggest with AI'}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mb-2">
               Define the agent&apos;s personality, capabilities, and constraints.
             </p>
             <Textarea
@@ -195,7 +233,12 @@ export default function AgentBuilder({ initialName = '', initialDesc = '', initi
                 Saved to registry · Copy, download, or deploy below
               </p>
             </div>
-            <DeployButton agentId={agent.id} agentName={agent.spec.name} />
+            <DeployButton
+            agentId={agent.id}
+            agentName={agent.spec.name}
+            agentCode={agent.code}
+            agentDescription={agent.spec.description}
+          />
           </div>
           <CodePreview code={agent.code} filename={`${agent.spec.name.toLowerCase().replace(/\s+/g, '-')}.ts`} />
           <Button variant="outline" onClick={() => { setStep(1); setAgent(null) }} className="w-full">

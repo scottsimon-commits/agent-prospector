@@ -57,7 +57,7 @@ export default function DashboardPage() {
       <div className="space-y-4 pt-2">
         <div className="inline-flex items-center gap-2 rounded-full border bg-muted/50 px-3 py-1 text-xs text-muted-foreground">
           <Zap className="h-3 w-3 text-yellow-500" />
-          Powered by Claude · Deploys to Vercel
+          Powered by OpenRouter · Deploys to Vercel
         </div>
         <h1 className="text-4xl font-bold tracking-tight leading-tight">
           Discover, build &amp; deploy<br />

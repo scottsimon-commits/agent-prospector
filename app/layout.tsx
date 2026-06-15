@@ -2,9 +2,10 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
-import { Bot, Search, Wrench, LayoutGrid, Database } from "lucide-react";
+import { Bot } from "lucide-react";
 import { Toaster } from "sonner";
 import { AgentStoreProvider } from "@/components/AgentStoreProvider";
+import { SidebarNav, MobileNav } from "@/components/NavLinks";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -26,14 +27,6 @@ export const metadata: Metadata = {
   },
 };
 
-const nav = [
-  { href: "/", label: "Dashboard", icon: LayoutGrid },
-  { href: "/prospect", label: "Prospect", icon: Search },
-  { href: "/build", label: "Build", icon: Wrench },
-  { href: "/gallery", label: "Gallery", icon: Bot },
-  { href: "/registry", label: "Registry", icon: Database },
-];
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full">
@@ -41,25 +34,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="flex min-h-screen">
           {/* Sidebar — hidden on mobile, visible md+ */}
           <aside className="hidden md:flex w-56 border-r bg-muted/20 flex-col gap-0.5 p-3 shrink-0 sticky top-0 h-screen overflow-y-auto">
-            <div className="flex items-center gap-2 px-2 py-3 mb-3">
+            <Link href="/" className="flex items-center gap-2 px-2 py-3 mb-3">
               <div className="h-7 w-7 rounded-lg bg-primary flex items-center justify-center">
                 <Bot className="h-4 w-4 text-primary-foreground" />
               </div>
               <span className="font-semibold text-sm tracking-tight">Agent Prospector</span>
-            </div>
-            {nav.map(({ href, label, icon: Icon }) => (
-              <Link
-                key={href}
-                href={href}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-muted-foreground hover:text-foreground hover:bg-muted"
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {label}
-              </Link>
-            ))}
+            </Link>
+            <SidebarNav />
             <div className="mt-auto pt-4 px-2">
               <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
-                Powered by Claude · Deploy to Vercel
+                Powered by OpenRouter · Deploy to Vercel
               </p>
             </div>
           </aside>
@@ -67,23 +51,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {/* Mobile top nav */}
           <div className="md:hidden fixed top-0 left-0 right-0 z-50 border-b bg-background/95 backdrop-blur">
             <div className="flex items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-2">
+              <Link href="/" className="flex items-center gap-2">
                 <div className="h-6 w-6 rounded-md bg-primary flex items-center justify-center">
                   <Bot className="h-3.5 w-3.5 text-primary-foreground" />
                 </div>
                 <span className="font-semibold text-sm">Agent Prospector</span>
-              </div>
-              <nav className="flex gap-1">
-                {nav.map(({ href, icon: Icon }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className="p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  >
-                    <Icon className="h-4 w-4" />
-                  </Link>
-                ))}
-              </nav>
+              </Link>
+              <MobileNav />
             </div>
           </div>
 
