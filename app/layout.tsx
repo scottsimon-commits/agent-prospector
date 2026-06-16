@@ -8,6 +8,7 @@ import { AgentStoreProvider } from "@/components/AgentStoreProvider";
 import { SidebarNav, MobileNav } from "@/components/NavLinks";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import HelpDialog from "@/components/HelpDialog";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -49,7 +50,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
                 Powered by OpenRouter
               </p>
-              <ThemeToggle />
+              <div className="flex items-center gap-0.5">
+                <HelpDialog />
+                <ThemeToggle />
+              </div>
             </div>
           </aside>
 
@@ -64,6 +68,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </Link>
               <div className="flex items-center gap-1">
                 <MobileNav />
+                <HelpDialog />
                 <ThemeToggle />
               </div>
             </div>

@@ -3,6 +3,7 @@ import { Bot, Search, Wrench, Database, ArrowRight, Zap, Code2, Rocket } from 'l
 import { Button } from '@/components/ui/button'
 import StatusBar from '@/components/StatusBar'
 import DashboardStats from '@/components/DashboardStats'
+import GettingStartedBanner from '@/components/GettingStartedBanner'
 
 const features = [
   {
@@ -54,6 +55,8 @@ export default function DashboardPage() {
     <div className="max-w-4xl mx-auto space-y-10">
       {/* Status bar */}
       <StatusBar />
+      {/* Getting started (first-time users, auto-hides after first agent) */}
+      <GettingStartedBanner />
       {/* Live stats */}
       <DashboardStats />
       {/* Hero */}
@@ -67,7 +70,7 @@ export default function DashboardPage() {
           <span className="text-primary">AI agents</span> — instantly
         </h1>
         <p className="text-muted-foreground text-lg max-w-xl leading-relaxed">
-          Agent Prospector helps you find where AI agents can save time, scaffolds their code with Claude, and deploys them to GitHub + Vercel in one click.
+          Agent Prospector helps you find where AI agents can save time, scaffolds their code automatically, and deploys them to GitHub + Vercel in one click.
         </p>
         <div className="flex flex-wrap gap-3 pt-1">
           <Link href="/prospect">
