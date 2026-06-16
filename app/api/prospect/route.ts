@@ -1,25 +1,11 @@
 import { NextRequest } from 'next/server'
 import { getOpenRouterClient, getAvailableProvider, PROSPECT_MODEL, PROSPECT_FALLBACK_MODEL, PROSPECT_SYSTEM_PROMPT } from '@/lib/ai-provider'
-import { getClient } from '@/lib/anthropic'
 import { ProspectRequestSchema } from '@/lib/validation'
-import { rateLimit, getClientIp } from '@/lib/rate-limit'
 
-export const runtime = 'nodejs'
-
-// Normalize any provider stream to simple: data: {"text":"..."}\n\ndata: [DONE]\n\n
-function makeTextEncoder() {
-  return new TextEncoder()
-}
+// Edge runtime: 30s timeout on Hobby plan vs 10s for Node.js
+export const runtime = 'edge'
 
 export async function POST(req: NextRequest) {
-  const { allowed } = rateLimit(getClientIp(req), 20, 60_000)
-  if (!allowed) {
-    return new Response('Rate limit exceeded. Try again in a minute.', {
-      status: 429,
-      headers: { 'Retry-After': '60' },
-    })
-  }
-
   let body: unknown
   try { body = await req.json() } catch {
     return new Response('Invalid JSON', { status: 400 })
@@ -31,12 +17,12 @@ export async function POST(req: NextRequest) {
   const provider = getAvailableProvider()
   if (!provider) {
     return new Response(
-      'No AI provider configured. Add OPENROUTER_API_KEY or ANTHROPIC_API_KEY to environment variables.',
+      'No AI provider configured. Add OPENROUTER_API_KEY to environment variables.',
       { status: 503 }
     )
   }
 
-  const encoder = makeTextEncoder()
+  const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -45,47 +31,38 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        if (provider === 'openrouter') {
-          const client = getOpenRouterClient()
-          const msgs = [
-            { role: 'system' as const, content: PROSPECT_SYSTEM_PROMPT },
-            ...parsed.data.messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-          ]
-          // Try primary model, fall back to secondary on upstream 429
-          let model = PROSPECT_MODEL
-          let openRouterStream
-          try {
-            openRouterStream = await client.chat.completions.create({ model, stream: true, max_tokens: 2048, messages: msgs })
-          } catch (e) {
-            const msg = e instanceof Error ? e.message : ''
-            if (msg.includes('429') || msg.includes('rate-limited')) {
-              model = PROSPECT_FALLBACK_MODEL
-              openRouterStream = await client.chat.completions.create({ model, stream: true, max_tokens: 2048, messages: msgs })
-            } else {
-              throw e
-            }
-          }
-          for await (const chunk of openRouterStream) {
-            const text = chunk.choices[0]?.delta?.content ?? ''
-            if (text) send(text)
-          }
-        } else {
-          // Anthropic fallback
-          const anthropic = getClient()
-          const anthropicStream = anthropic.messages.stream({
-            model: 'claude-sonnet-4-6',
+        const client = getOpenRouterClient()
+        const msgs = [
+          { role: 'system' as const, content: PROSPECT_SYSTEM_PROMPT },
+          ...parsed.data.messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+        ]
+
+        // Try primary model, fall back on upstream 429
+        let openRouterStream
+        try {
+          openRouterStream = await client.chat.completions.create({
+            model: PROSPECT_MODEL,
+            stream: true,
             max_tokens: 2048,
-            system: PROSPECT_SYSTEM_PROMPT,
-            messages: parsed.data.messages.map((m) => ({ role: m.role, content: m.content })),
+            messages: msgs,
           })
-          for await (const event of anthropicStream) {
-            if (
-              event.type === 'content_block_delta' &&
-              event.delta.type === 'text_delta'
-            ) {
-              send(event.delta.text)
-            }
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : ''
+          if (msg.includes('429') || msg.includes('rate-limited') || msg.includes('503')) {
+            openRouterStream = await client.chat.completions.create({
+              model: PROSPECT_FALLBACK_MODEL,
+              stream: true,
+              max_tokens: 2048,
+              messages: msgs,
+            })
+          } else {
+            throw e
           }
+        }
+
+        for await (const chunk of openRouterStream) {
+          const text = chunk.choices[0]?.delta?.content ?? ''
+          if (text) send(text)
         }
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'AI provider error'
