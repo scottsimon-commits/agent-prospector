@@ -66,9 +66,9 @@ export default function DeployButton({
 
   return (
     <>
-      <Button size={size} onClick={() => setOpen(true)} className="gap-2" variant={size === 'sm' ? 'outline' : 'default'}>
+      <Button size={size} onClick={() => setOpen(true)} className="gap-1.5" variant={size === 'sm' ? 'outline' : 'default'} aria-label="Deploy agent">
         <Rocket className={size === 'sm' ? 'h-3 w-3' : 'h-4 w-4'} />
-        {size === 'sm' ? '' : 'Deploy'}
+        Deploy
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>

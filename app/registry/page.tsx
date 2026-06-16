@@ -17,8 +17,18 @@ export default function RegistryPage() {
   const [preview, setPreview] = useState<Agent | null>(null)
 
   function del(id: string, name: string) {
-    deleteAgent(id)
-    toast.success(`Deleted "${name}"`)
+    const toastId = toast(`Delete "${name}"?`, {
+      action: {
+        label: 'Delete',
+        onClick: () => {
+          deleteAgent(id)
+          toast.success(`Deleted "${name}"`)
+        },
+      },
+      cancel: { label: 'Cancel', onClick: () => {} },
+      duration: 6000,
+    })
+    return toastId
   }
 
   const statusColor: Record<string, string> = {
@@ -111,19 +121,20 @@ export default function RegistryPage() {
                       <Button
                         size="sm" variant="ghost" className="h-7 text-xs gap-1"
                         onClick={() => setPreview(agent)}
+                        aria-label="View code"
                       >
                         <Code2 className="h-3 w-3" /> Code
                       </Button>
                       {agent.githubUrl && (
-                        <a href={agent.githubUrl} target="_blank" rel="noopener noreferrer">
-                          <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs">
+                        <a href={agent.githubUrl} target="_blank" rel="noopener noreferrer" aria-label="Open GitHub repository">
+                          <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs" aria-label="GitHub">
                             <GitBranch className="h-3 w-3" />
                           </Button>
                         </a>
                       )}
                       {agent.vercelUrl && (
-                        <a href={agent.vercelUrl} target="_blank" rel="noopener noreferrer">
-                          <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs">
+                        <a href={agent.vercelUrl} target="_blank" rel="noopener noreferrer" aria-label="Open live deployment">
+                          <Button size="sm" variant="ghost" className="h-7 gap-1 text-xs" aria-label="Live site">
                             <Globe className="h-3 w-3" />
                           </Button>
                         </a>
@@ -134,6 +145,7 @@ export default function RegistryPage() {
                           agentName={agent.spec.name}
                           agentCode={agent.code}
                           agentDescription={agent.spec.description}
+                          size="sm"
                           onSuccess={(githubUrl, vercelUrl) => handleDeploySuccess(agent.id, githubUrl, vercelUrl)}
                         />
                       )}
@@ -141,6 +153,7 @@ export default function RegistryPage() {
                         size="sm" variant="ghost"
                         className="h-7 text-xs text-red-500 hover:text-red-700 hover:bg-red-50"
                         onClick={() => del(agent.id, agent.spec.name)}
+                        aria-label={`Delete ${agent.spec.name}`}
                       >
                         <Trash2 className="h-3 w-3" />
                       </Button>

@@ -130,7 +130,12 @@ export default function ProspectorChat() {
         toast.success(`${found.length} agent opportunit${found.length === 1 ? 'y' : 'ies'} found!`)
       }
     } catch (err) {
-      toast.error('Connection error. Please try again.')
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('429') || msg.includes('rate')) {
+        toast.error('AI models are busy', { description: 'Both free models are rate-limited right now. Wait 10–30 seconds and try again.' })
+      } else {
+        toast.error('Connection error', { description: 'Could not reach the AI. Check your internet and try again.' })
+      }
       console.error(err)
     } finally {
       setLoading(false)

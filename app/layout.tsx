@@ -29,6 +29,7 @@ export const metadata: Metadata = {
     title: "Agent Prospector",
     description: "Discover, build, and deploy AI agents in one click.",
   },
+  metadataBase: new URL("https://agent-prospector.vercel.app"),
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
