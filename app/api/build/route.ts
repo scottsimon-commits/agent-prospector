@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getOpenRouterClient, getAvailableProvider, BUILD_MODEL, BUILD_SYSTEM_PROMPT } from '@/lib/ai-provider'
+import { getOpenRouterClient, getAvailableProvider, BUILD_MODEL, BUILD_FALLBACK_MODEL, BUILD_SYSTEM_PROMPT } from '@/lib/ai-provider'
 import { getClient } from '@/lib/anthropic'
 import { saveAgent } from '@/lib/registry'
 import { BuildRequestSchema } from '@/lib/validation'
@@ -61,14 +61,21 @@ Requirements:
   try {
     if (provider === 'openrouter') {
       const client = getOpenRouterClient()
-      const response = await client.chat.completions.create({
-        model: BUILD_MODEL,
-        max_tokens: 4096,
-        messages: [
-          { role: 'system', content: BUILD_SYSTEM_PROMPT },
-          { role: 'user', content: userPrompt },
-        ],
-      })
+      const msgs = [
+        { role: 'system' as const, content: BUILD_SYSTEM_PROMPT },
+        { role: 'user' as const, content: userPrompt },
+      ]
+      let response
+      try {
+        response = await client.chat.completions.create({ model: BUILD_MODEL, max_tokens: 4096, messages: msgs })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : ''
+        if (msg.includes('429') || msg.includes('rate-limited')) {
+          response = await client.chat.completions.create({ model: BUILD_FALLBACK_MODEL, max_tokens: 4096, messages: msgs })
+        } else {
+          throw e
+        }
+      }
       code = response.choices[0]?.message?.content ?? ''
     } else {
       const anthropic = getClient()

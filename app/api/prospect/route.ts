@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { getOpenRouterClient, getAvailableProvider, PROSPECT_MODEL, PROSPECT_SYSTEM_PROMPT } from '@/lib/ai-provider'
+import { getOpenRouterClient, getAvailableProvider, PROSPECT_MODEL, PROSPECT_FALLBACK_MODEL, PROSPECT_SYSTEM_PROMPT } from '@/lib/ai-provider'
 import { getClient } from '@/lib/anthropic'
 import { ProspectRequestSchema } from '@/lib/validation'
 import { rateLimit, getClientIp } from '@/lib/rate-limit'
@@ -47,15 +47,24 @@ export async function POST(req: NextRequest) {
       try {
         if (provider === 'openrouter') {
           const client = getOpenRouterClient()
-          const openRouterStream = await client.chat.completions.create({
-            model: PROSPECT_MODEL,
-            stream: true,
-            max_tokens: 2048,
-            messages: [
-              { role: 'system', content: PROSPECT_SYSTEM_PROMPT },
-              ...parsed.data.messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
-            ],
-          })
+          const msgs = [
+            { role: 'system' as const, content: PROSPECT_SYSTEM_PROMPT },
+            ...parsed.data.messages.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+          ]
+          // Try primary model, fall back to secondary on upstream 429
+          let model = PROSPECT_MODEL
+          let openRouterStream
+          try {
+            openRouterStream = await client.chat.completions.create({ model, stream: true, max_tokens: 2048, messages: msgs })
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : ''
+            if (msg.includes('429') || msg.includes('rate-limited')) {
+              model = PROSPECT_FALLBACK_MODEL
+              openRouterStream = await client.chat.completions.create({ model, stream: true, max_tokens: 2048, messages: msgs })
+            } else {
+              throw e
+            }
+          }
           for await (const chunk of openRouterStream) {
             const text = chunk.choices[0]?.delta?.content ?? ''
             if (text) send(text)

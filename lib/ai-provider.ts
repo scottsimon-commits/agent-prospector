@@ -1,8 +1,11 @@
 import OpenAI from 'openai'
 
 // Model selection for OpenRouter free tier
-export const PROSPECT_MODEL = 'meta-llama/llama-3.3-70b-instruct:free'
+// Gemma 4 31B is reliable; Llama 3.3 70B is kept as fallback but has frequent upstream rate limits
+export const PROSPECT_MODEL = 'google/gemma-4-31b-it:free'
+export const PROSPECT_FALLBACK_MODEL = 'openai/gpt-oss-20b:free'
 export const BUILD_MODEL = 'qwen/qwen3-coder:free'
+export const BUILD_FALLBACK_MODEL = 'google/gemma-4-31b-it:free'
 
 export const OPENROUTER_BASE = 'https://openrouter.ai/api/v1'
 
