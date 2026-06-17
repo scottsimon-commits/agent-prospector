@@ -10,13 +10,15 @@ import { BusinessProspectRequestSchema } from '@/lib/validation'
 
 export const runtime = 'edge'
 
-// Domains to skip when picking a company's "official" website from search results
-const SKIP_DOMAINS = [
+// Domains that are NOT the company's own website
+const DIRECTORY_DOMAINS = [
   'google.', 'bing.', 'yahoo.', 'duckduckgo.',
   'yelp.com', 'yellowpages.com', 'whitepages.com', 'angi.com', 'thumbtack.com',
   'bbb.org', 'manta.com', 'bizapedia.com', 'dnb.com', 'hoovers.com',
-  'wikipedia.org', 'wikidata.org', 'mapquest.com', 'maps.google.',
-  'jina.ai', 'reddit.com', 'quora.com',
+  'wikipedia.org', 'wikidata.org', 'mapquest.com',
+  'jina.ai', 'reddit.com', 'quora.com', 'nextdoor.com',
+  'facebook.com', 'instagram.com', 'twitter.com', 'x.com', 'tiktok.com',
+  'linkedin.com', // handled separately
 ]
 
 function stripJsonFences(text: string): string {
@@ -26,60 +28,110 @@ function stripJsonFences(text: string): string {
     .trim()
 }
 
-async function fetchWithTimeout(url: string, timeoutMs: number): Promise<Response> {
+async function fetchWithTimeout(url: string, ms: number): Promise<string | null> {
   const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), timeoutMs)
+  const timer = setTimeout(() => controller.abort(), ms)
   try {
-    return await fetch(url, {
+    const res = await fetch(url, {
       signal: controller.signal,
-      headers: { 'Accept': 'text/plain,text/html,*/*' },
+      headers: { Accept: 'text/plain,text/html,*/*' },
     })
+    if (!res.ok) return null
+    return await res.text()
+  } catch {
+    return null
   } finally {
     clearTimeout(timer)
   }
 }
 
-async function searchForWebsite(companyName: string, location: string): Promise<string | null> {
-  try {
-    const query = encodeURIComponent(`"${companyName}" ${location} official website`)
-    const res = await fetchWithTimeout(`https://s.jina.ai/?q=${query}`, 6000)
-    if (!res.ok) return null
-    const text = await res.text()
+function extractWebsiteUrl(searchText: string): string | null {
+  const urlPattern = /(?:URL Source:|URL:)\s*(https?:\/\/[^\s\n]+)/gi
+  let match
+  while ((match = urlPattern.exec(searchText)) !== null) {
+    const url = match[1].replace(/[,;.)\]]+$/, '')
+    if (!DIRECTORY_DOMAINS.some((d) => url.includes(d))) return url
+  }
+  // Fallback: any https URL not in skip list
+  const all = searchText.match(/https?:\/\/[^\s\n\)]+/g) ?? []
+  for (const u of all) {
+    const clean = u.replace(/[,;.)\]]+$/, '')
+    if (!DIRECTORY_DOMAINS.some((d) => clean.includes(d))) return clean
+  }
+  return null
+}
 
-    // Jina search returns "URL Source: https://..." lines
-    const urlPattern = /(?:URL Source:|URL:)\s*(https?:\/\/[^\s\n]+)/gi
-    let match
-    while ((match = urlPattern.exec(text)) !== null) {
-      const url = match[1].replace(/[,;.]+$/, '') // strip trailing punctuation
-      if (!SKIP_DOMAINS.some((d) => url.includes(d))) {
-        return url
-      }
-    }
+function extractLinkedInUrl(searchText: string): string | null {
+  const match = searchText.match(/https?:\/\/(?:www\.)?linkedin\.com\/company\/[^\s\n\)]+/i)
+  return match ? match[0].replace(/[,;.)\]]+$/, '') : null
+}
 
-    // Fallback: any https:// URL that isn't a skipped domain
-    const fallback = text.match(/https?:\/\/[^\s\n\)]+/g) ?? []
-    for (const url of fallback) {
-      const clean = url.replace(/[,;.]+$/, '')
-      if (!SKIP_DOMAINS.some((d) => clean.includes(d))) return clean
-    }
+function extractSearchSnippets(searchText: string): string {
+  // Grab the first ~2000 chars of Jina search output — contains titles, URLs, and descriptions
+  return searchText.slice(0, 2000).trim()
+}
 
-    return null
-  } catch {
-    return null
+interface ResearchData {
+  websiteUrl: string | null
+  websiteContent: string | null
+  linkedInUrl: string | null
+  linkedInContent: string | null
+  searchSnippets: string
+}
+
+async function researchCompany(companyName: string, location: string): Promise<ResearchData> {
+  // Run two searches in parallel: general + LinkedIn-specific
+  const generalQuery = encodeURIComponent(`"${companyName}" ${location}`)
+  const linkedInQuery = encodeURIComponent(`"${companyName}" ${location} site:linkedin.com/company`)
+
+  const [generalResults, linkedInResults] = await Promise.all([
+    fetchWithTimeout(`https://s.jina.ai/?q=${generalQuery}`, 5000),
+    fetchWithTimeout(`https://s.jina.ai/?q=${linkedInQuery}`, 5000),
+  ])
+
+  const websiteUrl = generalResults ? extractWebsiteUrl(generalResults) : null
+  const linkedInUrl =
+    linkedInResults ? extractLinkedInUrl(linkedInResults) :
+    generalResults  ? extractLinkedInUrl(generalResults) : null
+  const searchSnippets = generalResults ? extractSearchSnippets(generalResults) : ''
+
+  // Fetch website + LinkedIn content in parallel
+  const [websiteContent, linkedInContent] = await Promise.all([
+    websiteUrl ? fetchWithTimeout(`https://r.jina.ai/${websiteUrl}`, 6000) : Promise.resolve(null),
+    linkedInUrl ? fetchWithTimeout(`https://r.jina.ai/${linkedInUrl}`, 6000) : Promise.resolve(null),
+  ])
+
+  return {
+    websiteUrl,
+    websiteContent: websiteContent ? websiteContent.slice(0, 4000) : null,
+    linkedInUrl,
+    linkedInContent: linkedInContent ? linkedInContent.slice(0, 2000) : null,
+    searchSnippets,
   }
 }
 
-async function fetchWebsiteContent(url: string): Promise<string | null> {
-  try {
-    const jinaUrl = `https://r.jina.ai/${url}`
-    const res = await fetchWithTimeout(jinaUrl, 8000)
-    if (!res.ok) return null
-    const text = await res.text()
-    // Truncate to keep within context limits — homepage is usually enough
-    return text.slice(0, 5000)
-  } catch {
-    return null
+function buildResearchBrief(data: ResearchData): string {
+  const sections: string[] = []
+
+  if (data.websiteContent) {
+    sections.push(`=== COMPANY WEBSITE (${data.websiteUrl}) — PRIMARY SOURCE ===\n${data.websiteContent}`)
+  } else if (data.websiteUrl) {
+    sections.push(`=== COMPANY WEBSITE ===\nFound at ${data.websiteUrl} but content could not be fetched.`)
+  } else {
+    sections.push('=== COMPANY WEBSITE ===\nNo website found.')
   }
+
+  if (data.linkedInContent) {
+    sections.push(`=== LINKEDIN PROFILE (${data.linkedInUrl}) ===\n${data.linkedInContent}`)
+  } else if (data.linkedInUrl) {
+    sections.push(`=== LINKEDIN PROFILE ===\nFound at ${data.linkedInUrl} but content could not be fetched.`)
+  }
+
+  if (data.searchSnippets) {
+    sections.push(`=== WEB SEARCH RESULTS (general context) ===\n${data.searchSnippets}`)
+  }
+
+  return sections.join('\n\n')
 }
 
 export async function POST(req: NextRequest) {
@@ -102,28 +154,18 @@ export async function POST(req: NextRequest) {
 
   const { companyName, location, context } = parsed.data
 
-  // Step 1: Search for the company website
-  const websiteUrl = await searchForWebsite(companyName, location)
+  // Research the company from multiple web sources
+  const research = await researchCompany(companyName, location)
+  const researchBrief = buildResearchBrief(research)
 
-  // Step 2: Fetch website content if found
-  let websiteContent: string | null = null
-  if (websiteUrl) {
-    websiteContent = await fetchWebsiteContent(websiteUrl)
-  }
-
-  // Build user message — lean on real website data when available
-  const websiteSection = websiteContent
-    ? `\n\nWEBSITE CONTENT (from ${websiteUrl}):\n${websiteContent}\n\nUse this real website content as your PRIMARY source. Extract actual services, team info, locations, and any details mentioned.`
-    : websiteUrl
-    ? `\n\nWebsite found (${websiteUrl}) but content could not be fetched. Use your knowledge of this business type.`
-    : `\n\nNo website was found. Base your analysis on what is typical for this type of business in this location.`
-
-  const userMessage = `Research this company and generate 7 ranked AI agent recommendations:
+  const userMessage = `Research this company and generate 7 ranked AI agent recommendations.
 
 Company Name: ${companyName}
-Location: ${location}${context ? `\nAdditional context: ${context}` : ''}${websiteSection}
+Location: ${location}${context ? `\nAdditional context: ${context}` : ''}
 
-Return the complete JSON response now.`
+${researchBrief}
+
+Use the website content as the primary source. Supplement with LinkedIn and search results where the website lacks detail. Return the complete JSON response.`
 
   try {
     const client = getOpenRouterClient()
@@ -160,8 +202,8 @@ Return the complete JSON response now.`
     const jsonStr = stripJsonFences(content)
     const data = JSON.parse(jsonStr)
 
-    // Attach the website URL so the frontend can display it
-    data.websiteUrl = websiteUrl ?? null
+    data.websiteUrl = research.websiteUrl ?? null
+    data.linkedInUrl = research.linkedInUrl ?? null
 
     return Response.json(data)
   } catch (err) {

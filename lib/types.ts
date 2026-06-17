@@ -94,4 +94,5 @@ export interface BusinessProspectResult {
   company: BusinessCompanyProfile
   recommendations: AgentRecommendation[]
   websiteUrl?: string
+  linkedInUrl?: string
 }

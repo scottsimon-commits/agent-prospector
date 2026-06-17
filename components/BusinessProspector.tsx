@@ -23,6 +23,7 @@ import {
   Users,
   Cpu,
   Globe,
+  Link2,
 } from 'lucide-react'
 import type { BusinessProspectResult, AgentRecommendation } from '@/lib/types'
 import { useRouter } from 'next/navigation'
@@ -31,11 +32,11 @@ import { toast } from 'sonner'
 type Phase = 'idle' | 'loading' | 'success' | 'error'
 
 const LOADING_STEPS = [
-  'Searching for company website…',
-  'Reading website content…',
+  'Searching website, LinkedIn & web sources…',
+  'Reading company website content…',
   'Analyzing business operations…',
   'Generating tailored recommendations…',
-  'Ranking agents by impact…',
+  'Ranking agents by business impact…',
 ]
 
 const complexityColor: Record<string, string> = {
@@ -219,6 +220,8 @@ export default function BusinessProspector() {
       `COMPANY: ${result.company.name}`,
       `INDUSTRY: ${result.company.industry} (${result.company.businessType})`,
       `SIZE: ${result.company.estimatedSize}`,
+      ...(result.websiteUrl ? [`WEBSITE: ${result.websiteUrl}`] : []),
+      ...(result.linkedInUrl ? [`LINKEDIN: ${result.linkedInUrl}`] : []),
       `TECH: ${result.company.technologyProfile}`,
       '',
       'KEY PAIN POINTS:',
@@ -315,8 +318,8 @@ export default function BusinessProspector() {
             </div>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-3">
-            {result.websiteUrl && (
+          <div className="mt-3 flex flex-wrap items-center gap-4">
+            {result.websiteUrl ? (
               <a
                 href={result.websiteUrl}
                 target="_blank"
@@ -326,12 +329,22 @@ export default function BusinessProspector() {
                 <Globe className="h-3.5 w-3.5 shrink-0" />
                 {new URL(result.websiteUrl).hostname.replace(/^www\./, '')}
               </a>
-            )}
-            {!result.websiteUrl && (
+            ) : (
               <span className="flex items-center gap-1.5 text-xs text-muted-foreground/60 italic">
                 <Globe className="h-3.5 w-3.5 shrink-0" />
-                No website found — based on industry knowledge
+                No website found
               </span>
+            )}
+            {result.linkedInUrl && (
+              <a
+                href={result.linkedInUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs text-[#0A66C2] hover:underline"
+              >
+                <Link2 className="h-3.5 w-3.5 shrink-0" />
+                LinkedIn
+              </a>
             )}
           </div>
 
