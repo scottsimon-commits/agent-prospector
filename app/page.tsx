@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Bot, Search, Wrench, Database, ArrowRight, Zap, Code2, Rocket } from 'lucide-react'
+import { Bot, Search, Wrench, Database, ArrowRight, Zap, Code2, Rocket, Briefcase, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import StatusBar from '@/components/StatusBar'
 import DashboardStats from '@/components/DashboardStats'
@@ -8,12 +8,21 @@ import GettingStartedBanner from '@/components/GettingStartedBanner'
 const features = [
   {
     href: '/prospect',
-    icon: Search,
-    title: 'Prospect',
-    description: 'Have a conversation with Claude to uncover your best AI agent opportunities.',
-    cta: 'Start prospecting',
+    icon: User,
+    title: 'Individual Prospecting',
+    description: 'Chat with AI to uncover where automation can save you the most time in your own workflow.',
+    cta: 'Start conversation',
     color: 'text-blue-500',
     bg: 'bg-blue-50',
+  },
+  {
+    href: '/business',
+    icon: Briefcase,
+    title: 'Business Prospecting',
+    description: 'Enter any company name and location — AI researches their operations and ranks the best agents.',
+    cta: 'Research a company',
+    color: 'text-emerald-500',
+    bg: 'bg-emerald-50',
   },
   {
     href: '/build',
@@ -73,16 +82,16 @@ export default function DashboardPage() {
           Agent Prospector helps you find where AI agents can save time, scaffolds their code automatically, and deploys them to GitHub + Vercel in one click.
         </p>
         <div className="flex flex-wrap gap-3 pt-1">
-          <Link href="/prospect">
+          <Link href="/business">
             <Button size="lg" className="gap-2">
-              <Search className="h-4 w-4" />
-              Start Prospecting
+              <Briefcase className="h-4 w-4" />
+              Research a Company
             </Button>
           </Link>
-          <Link href="/gallery">
+          <Link href="/prospect">
             <Button size="lg" variant="outline" className="gap-2">
-              <Bot className="h-4 w-4" />
-              Browse Templates
+              <Search className="h-4 w-4" />
+              Individual Prospect
             </Button>
           </Link>
         </div>
@@ -110,7 +119,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Feature Cards */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {features.map(({ href, icon: Icon, title, description, cta, color, bg }) => (
           <Link key={href} href={href} className="group block rounded-2xl border bg-card p-5 hover:shadow-md transition-all hover:-translate-y-0.5">
             <div className={`h-10 w-10 rounded-xl ${bg} flex items-center justify-center mb-3`}>

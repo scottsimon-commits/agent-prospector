@@ -63,3 +63,34 @@ export interface ChatMessage {
   role: 'user' | 'assistant'
   content: string
 }
+
+export interface BusinessCompanyProfile {
+  name: string
+  industry: string
+  businessType: string
+  estimatedSize: string
+  primaryOperations: string[]
+  keyPainPoints: string[]
+  technologyProfile: string
+}
+
+export type RecommendationTier = 'primary' | 'expansion'
+
+export interface AgentRecommendation {
+  rank: number
+  tier: RecommendationTier
+  name: string
+  tagline: string
+  description: string
+  whyThisCompany: string
+  impact: string
+  tools: string[]
+  complexity: 'low' | 'medium' | 'high'
+  implementationTime: string
+  category: string
+}
+
+export interface BusinessProspectResult {
+  company: BusinessCompanyProfile
+  recommendations: AgentRecommendation[]
+}

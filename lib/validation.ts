@@ -34,3 +34,9 @@ export const DeployRequestSchema = z.object({
 export const DeleteAgentSchema = z.object({
   id: z.string().uuid(),
 })
+
+export const BusinessProspectRequestSchema = z.object({
+  companyName: z.string().min(1).max(200),
+  location: z.string().min(1).max(200),
+  context: z.string().max(500).optional(),
+})
