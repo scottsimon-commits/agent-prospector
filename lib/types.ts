@@ -93,4 +93,5 @@ export interface AgentRecommendation {
 export interface BusinessProspectResult {
   company: BusinessCompanyProfile
   recommendations: AgentRecommendation[]
+  websiteUrl?: string
 }

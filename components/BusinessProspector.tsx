@@ -22,6 +22,7 @@ import {
   Briefcase,
   Users,
   Cpu,
+  Globe,
 } from 'lucide-react'
 import type { BusinessProspectResult, AgentRecommendation } from '@/lib/types'
 import { useRouter } from 'next/navigation'
@@ -30,9 +31,9 @@ import { toast } from 'sonner'
 type Phase = 'idle' | 'loading' | 'success' | 'error'
 
 const LOADING_STEPS = [
-  'Profiling company type and industry…',
+  'Searching for company website…',
+  'Reading website content…',
   'Analyzing business operations…',
-  'Identifying key pain points…',
   'Generating tailored recommendations…',
   'Ranking agents by impact…',
 ]
@@ -314,7 +315,27 @@ export default function BusinessProspector() {
             </div>
           </div>
 
-          <div className="mt-4 flex items-start gap-1.5 text-xs text-muted-foreground">
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {result.websiteUrl && (
+              <a
+                href={result.websiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 text-xs text-primary hover:underline"
+              >
+                <Globe className="h-3.5 w-3.5 shrink-0" />
+                {new URL(result.websiteUrl).hostname.replace(/^www\./, '')}
+              </a>
+            )}
+            {!result.websiteUrl && (
+              <span className="flex items-center gap-1.5 text-xs text-muted-foreground/60 italic">
+                <Globe className="h-3.5 w-3.5 shrink-0" />
+                No website found — based on industry knowledge
+              </span>
+            )}
+          </div>
+
+          <div className="mt-3 flex items-start gap-1.5 text-xs text-muted-foreground">
             <Cpu className="h-3.5 w-3.5 mt-0.5 shrink-0" />
             <span>{result.company.technologyProfile}</span>
           </div>
