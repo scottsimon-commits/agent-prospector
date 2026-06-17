@@ -10,6 +10,9 @@ import { BusinessProspectRequestSchema } from '@/lib/validation'
 
 export const runtime = 'edge'
 
+// Hard cap on all web research — guarantees the AI call has ≥20s within the 30s edge limit
+const RESEARCH_TIMEOUT_MS = 8000
+
 // Domains that are NOT the company's own website
 const DIRECTORY_DOMAINS = [
   'google.', 'bing.', 'yahoo.', 'duckduckgo.',
@@ -20,6 +23,22 @@ const DIRECTORY_DOMAINS = [
   'facebook.com', 'instagram.com', 'twitter.com', 'x.com', 'tiktok.com',
   'linkedin.com', // handled separately
 ]
+
+interface ResearchData {
+  websiteUrl: string | null
+  websiteContent: string | null
+  linkedInUrl: string | null
+  linkedInContent: string | null
+  searchSnippets: string
+}
+
+const EMPTY_RESEARCH: ResearchData = {
+  websiteUrl: null,
+  websiteContent: null,
+  linkedInUrl: null,
+  linkedInContent: null,
+  searchSnippets: '',
+}
 
 function stripJsonFences(text: string): string {
   return text
@@ -52,7 +71,6 @@ function extractWebsiteUrl(searchText: string): string | null {
     const url = match[1].replace(/[,;.)\]]+$/, '')
     if (!DIRECTORY_DOMAINS.some((d) => url.includes(d))) return url
   }
-  // Fallback: any https URL not in skip list
   const all = searchText.match(/https?:\/\/[^\s\n\)]+/g) ?? []
   for (const u of all) {
     const clean = u.replace(/[,;.)\]]+$/, '')
@@ -67,26 +85,17 @@ function extractLinkedInUrl(searchText: string): string | null {
 }
 
 function extractSearchSnippets(searchText: string): string {
-  // Grab the first ~2000 chars of Jina search output — contains titles, URLs, and descriptions
   return searchText.slice(0, 2000).trim()
 }
 
-interface ResearchData {
-  websiteUrl: string | null
-  websiteContent: string | null
-  linkedInUrl: string | null
-  linkedInContent: string | null
-  searchSnippets: string
-}
-
 async function researchCompany(companyName: string, location: string): Promise<ResearchData> {
-  // Run two searches in parallel: general + LinkedIn-specific
+  // Two searches in parallel: general (finds website) + LinkedIn-specific
   const generalQuery = encodeURIComponent(`"${companyName}" ${location}`)
   const linkedInQuery = encodeURIComponent(`"${companyName}" ${location} site:linkedin.com/company`)
 
   const [generalResults, linkedInResults] = await Promise.all([
-    fetchWithTimeout(`https://s.jina.ai/?q=${generalQuery}`, 5000),
-    fetchWithTimeout(`https://s.jina.ai/?q=${linkedInQuery}`, 5000),
+    fetchWithTimeout(`https://s.jina.ai/?q=${generalQuery}`, 4000),
+    fetchWithTimeout(`https://s.jina.ai/?q=${linkedInQuery}`, 4000),
   ])
 
   const websiteUrl = generalResults ? extractWebsiteUrl(generalResults) : null
@@ -97,8 +106,8 @@ async function researchCompany(companyName: string, location: string): Promise<R
 
   // Fetch website + LinkedIn content in parallel
   const [websiteContent, linkedInContent] = await Promise.all([
-    websiteUrl ? fetchWithTimeout(`https://r.jina.ai/${websiteUrl}`, 6000) : Promise.resolve(null),
-    linkedInUrl ? fetchWithTimeout(`https://r.jina.ai/${linkedInUrl}`, 6000) : Promise.resolve(null),
+    websiteUrl ? fetchWithTimeout(`https://r.jina.ai/${websiteUrl}`, 5000) : Promise.resolve(null),
+    linkedInUrl ? fetchWithTimeout(`https://r.jina.ai/${linkedInUrl}`, 5000) : Promise.resolve(null),
   ])
 
   return {
@@ -154,8 +163,14 @@ export async function POST(req: NextRequest) {
 
   const { companyName, location, context } = parsed.data
 
-  // Research the company from multiple web sources
-  const research = await researchCompany(companyName, location)
+  // Race research against a hard timeout — guarantees AI always has ≥20s
+  const research = await Promise.race([
+    researchCompany(companyName, location),
+    new Promise<ResearchData>((resolve) =>
+      setTimeout(() => resolve(EMPTY_RESEARCH), RESEARCH_TIMEOUT_MS)
+    ),
+  ])
+
   const researchBrief = buildResearchBrief(research)
 
   const userMessage = `Research this company and generate 7 ranked AI agent recommendations.
