@@ -40,3 +40,18 @@ export const BusinessProspectRequestSchema = z.object({
   location: z.string().min(1).max(200),
   context: z.string().max(500).optional(),
 })
+
+const ResearchDataSchema = z.object({
+  websiteUrl: z.string().nullable(),
+  websiteContent: z.string().nullable(),
+  linkedInUrl: z.string().nullable(),
+  linkedInContent: z.string().nullable(),
+  searchSnippets: z.string(),
+})
+
+export const BusinessAnalyzeRequestSchema = z.object({
+  companyName: z.string().min(1).max(200),
+  location: z.string().min(1).max(200),
+  context: z.string().max(500).optional(),
+  research: ResearchDataSchema,
+})

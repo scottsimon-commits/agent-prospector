@@ -29,14 +29,19 @@ import type { BusinessProspectResult, AgentRecommendation } from '@/lib/types'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 
-type Phase = 'idle' | 'loading' | 'success' | 'error'
+type Phase = 'idle' | 'researching' | 'analyzing' | 'success' | 'error'
 
-const LOADING_STEPS = [
-  'Searching website, LinkedIn & web sources…',
-  'Reading company website content…',
-  'Analyzing business operations…',
-  'Generating tailored recommendations…',
-  'Ranking agents by business impact…',
+const RESEARCH_STEPS = [
+  'Searching for company website…',
+  'Reading website content…',
+  'Scanning LinkedIn profile…',
+]
+
+const ANALYZE_STEPS = [
+  'Profiling business operations…',
+  'Identifying automation opportunities…',
+  'Generating agent recommendations…',
+  'Ranking by business impact…',
 ]
 
 const complexityColor: Record<string, string> = {
@@ -154,42 +159,73 @@ export default function BusinessProspector() {
   const [apiMissing, setApiMissing] = useState(false)
 
   useEffect(() => {
-    if (phase !== 'loading') return
+    if (phase !== 'researching' && phase !== 'analyzing') return
     setLoadingStep(0)
+    const maxStep = phase === 'researching' ? RESEARCH_STEPS.length - 1 : ANALYZE_STEPS.length - 1
     const interval = setInterval(() => {
-      setLoadingStep((s) => (s < LOADING_STEPS.length - 1 ? s + 1 : s))
-    }, 3000)
+      setLoadingStep((s) => (s < maxStep ? s + 1 : s))
+    }, 4000)
     return () => clearInterval(interval)
   }, [phase])
 
   async function research() {
-    if (!companyName.trim() || !location.trim() || phase === 'loading') return
-    setPhase('loading')
+    if (!companyName.trim() || !location.trim()) return
+
+    setPhase('researching')
     setResult(null)
     setErrorMsg('')
     setApiMissing(false)
 
     try {
-      const res = await fetch('/api/business-prospect', {
+      // Phase 1 — web research (website, LinkedIn, search snippets)
+      const researchRes = await fetch('/api/business-research', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: companyName.trim(),
+          location: location.trim(),
+        }),
+      })
+
+      if (researchRes.status === 503) {
+        setApiMissing(true)
+        setPhase('error')
+        return
+      }
+
+      if (!researchRes.ok) {
+        const d = await researchRes.json().catch(() => ({}))
+        setErrorMsg((d as { error?: string }).error ?? 'Research failed. Please try again.')
+        setPhase('error')
+        return
+      }
+
+      const researchData = await researchRes.json()
+
+      // Phase 2 — AI analysis
+      setPhase('analyzing')
+
+      const analyzeRes = await fetch('/api/business-analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           companyName: companyName.trim(),
           location: location.trim(),
           context: context.trim() || undefined,
+          research: researchData,
         }),
       })
 
-      if (res.status === 503) {
+      if (analyzeRes.status === 503) {
         setApiMissing(true)
         setPhase('error')
         return
       }
 
-      const data = await res.json()
+      const data = await analyzeRes.json()
 
-      if (!res.ok || data.error) {
-        setErrorMsg(data.error ?? 'Research failed. Please try again.')
+      if (!analyzeRes.ok || data.error) {
+        setErrorMsg(data.error ?? 'Analysis failed. Please try again.')
         setPhase('error')
         return
       }
@@ -263,20 +299,50 @@ export default function BusinessProspector() {
     setContext('')
   }
 
-  if (phase === 'loading') {
+  if (phase === 'researching' || phase === 'analyzing') {
+    const isResearching = phase === 'researching'
+    const steps = isResearching ? RESEARCH_STEPS : ANALYZE_STEPS
+    const headline = isResearching ? `Researching ${companyName}…` : `Analyzing ${companyName}…`
+    const sub = isResearching
+      ? 'Finding website, LinkedIn profile, and web sources'
+      : 'Generating tailored AI agent recommendations'
+
     return (
       <div className="flex flex-col items-center justify-center gap-6 py-16 text-center">
         <div className="rounded-full bg-primary/10 p-5">
           <Loader2 className="h-10 w-10 text-primary animate-spin" />
         </div>
         <div>
-          <p className="font-semibold text-base">Researching {companyName}…</p>
-          <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-            Analyzing their industry, operations, and automation opportunities
-          </p>
+          <p className="font-semibold text-base">{headline}</p>
+          <p className="text-sm text-muted-foreground mt-1 max-w-xs">{sub}</p>
         </div>
+
+        {/* Phase progress indicator */}
+        <div className="flex items-center gap-2">
+          <div className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+            isResearching
+              ? 'bg-primary/10 text-primary'
+              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+          }`}>
+            {isResearching
+              ? <Loader2 className="h-3 w-3 animate-spin" />
+              : <CheckCircle2 className="h-3 w-3" />}
+            Research
+          </div>
+          <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+          <div className={`flex items-center gap-1.5 text-xs px-3 py-1 rounded-full font-medium transition-colors ${
+            !isResearching
+              ? 'bg-primary/10 text-primary'
+              : 'bg-muted text-muted-foreground'
+          }`}>
+            {!isResearching && <Loader2 className="h-3 w-3 animate-spin" />}
+            Analyze
+          </div>
+        </div>
+
+        {/* Step list */}
         <div className="flex flex-col gap-2 text-left w-full max-w-xs">
-          {LOADING_STEPS.map((step, i) => (
+          {steps.map((step, i) => (
             <div key={step} className={`flex items-center gap-2 text-sm transition-opacity ${i <= loadingStep ? 'opacity-100' : 'opacity-30'}`}>
               {i < loadingStep ? (
                 <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
