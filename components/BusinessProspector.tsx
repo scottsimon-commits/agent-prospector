@@ -24,6 +24,7 @@ import {
   Cpu,
   Globe,
   Link2,
+  FileDown,
 } from 'lucide-react'
 import type { BusinessProspectResult, AgentRecommendation } from '@/lib/types'
 import { useRouter } from 'next/navigation'
@@ -157,6 +158,7 @@ export default function BusinessProspector() {
   const [errorMsg, setErrorMsg] = useState('')
   const [loadingStep, setLoadingStep] = useState(0)
   const [apiMissing, setApiMissing] = useState(false)
+  const [aiaLoading, setAiaLoading] = useState(false)
 
   useEffect(() => {
     if (phase !== 'researching' && phase !== 'analyzing') return
@@ -288,6 +290,34 @@ export default function BusinessProspector() {
         description: 'Paste directly into your AIA template.',
       })
     })
+  }
+
+  async function generateAIA() {
+    if (!result) return
+    setAiaLoading(true)
+    try {
+      const res = await fetch('/api/generate-aia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyName: companyName.trim(), location: location.trim(), result }),
+      })
+      if (!res.ok) {
+        toast.error('Failed to generate AIA report')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `AIA_${companyName.trim().replace(/[^a-zA-Z0-9]/g, '_')}.docx`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('AIA report downloaded successfully')
+    } catch {
+      toast.error('Download failed — please try again')
+    } finally {
+      setAiaLoading(false)
+    }
   }
 
   function reset() {
@@ -479,13 +509,14 @@ export default function BusinessProspector() {
             <Copy className="h-4 w-4" />
             Copy AIA Summary
           </Button>
+          <Button onClick={generateAIA} variant="secondary" className="gap-2" disabled={aiaLoading}>
+            {aiaLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
+            {aiaLoading ? 'Generating…' : 'Generate AIA Report'}
+          </Button>
           <Button onClick={reset} variant="outline" className="gap-2">
             <RotateCcw className="h-4 w-4" />
             Research Another Company
           </Button>
-          <p className="text-xs text-muted-foreground ml-auto hidden sm:block">
-            AIA Report generation coming soon
-          </p>
         </div>
       </div>
     )
