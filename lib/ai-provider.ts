@@ -57,7 +57,7 @@ Requirements:
 - No markdown fences or explanation — output ONLY the TypeScript code
 - Include all necessary imports at the top`
 
-export const BUSINESS_PROSPECT_MODEL = 'google/gemini-2.0-flash-exp:free'
+export const BUSINESS_PROSPECT_MODEL = 'meta-llama/llama-3.3-70b-instruct:free'
 export const BUSINESS_PROSPECT_FALLBACK_MODEL = 'meta-llama/llama-3.1-8b-instruct:free'
 
 export const BUSINESS_PROSPECT_SYSTEM_PROMPT = `You are an expert AI business consultant at Astra AI — an AI automation agency that builds intelligent agents for small and medium-sized businesses. You specialize in identifying the highest-impact automation opportunities for specific business types.
