@@ -85,7 +85,7 @@ Prioritize the website content as your primary source. Use LinkedIn for team/com
       response = await client.chat.completions.create({
         model: BUSINESS_PROSPECT_MODEL,
         stream: false,
-        max_tokens: 3500,
+        max_tokens: 2000,
         messages: [
           { role: 'system', content: BUSINESS_PROSPECT_SYSTEM_PROMPT },
           { role: 'user', content: userMessage },
@@ -97,7 +97,7 @@ Prioritize the website content as your primary source. Use LinkedIn for team/com
         response = await client.chat.completions.create({
           model: BUSINESS_PROSPECT_FALLBACK_MODEL,
           stream: false,
-          max_tokens: 3500,
+          max_tokens: 2000,
           messages: [
             { role: 'system', content: BUSINESS_PROSPECT_SYSTEM_PROMPT },
             { role: 'user', content: userMessage },

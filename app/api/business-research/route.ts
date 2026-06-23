@@ -86,9 +86,9 @@ export async function POST(req: NextRequest) {
 
   return Response.json({
     websiteUrl,
-    websiteContent: websiteContent ? websiteContent.slice(0, 5000) : null,
+    websiteContent: websiteContent ? websiteContent.slice(0, 3000) : null,
     linkedInUrl,
-    linkedInContent: linkedInContent ? linkedInContent.slice(0, 2500) : null,
-    searchSnippets,
+    linkedInContent: linkedInContent ? linkedInContent.slice(0, 1500) : null,
+    searchSnippets: searchSnippets.slice(0, 1500),
   })
 }
