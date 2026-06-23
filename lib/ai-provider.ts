@@ -1,13 +1,17 @@
 import OpenAI from 'openai'
 
 // Model selection for OpenRouter free tier
-// Gemma 4 31B is reliable; Llama 3.3 70B is kept as fallback but has frequent upstream rate limits
 export const PROSPECT_MODEL = 'google/gemma-4-31b-it:free'
 export const PROSPECT_FALLBACK_MODEL = 'openai/gpt-oss-20b:free'
 export const BUILD_MODEL = 'qwen/qwen3-coder:free'
 export const BUILD_FALLBACK_MODEL = 'google/gemma-4-31b-it:free'
 
 export const OPENROUTER_BASE = 'https://openrouter.ai/api/v1'
+export const GROQ_BASE = 'https://api.groq.com/openai/v1'
+
+// Groq models — fast LPU inference, free tier, typically 1-3s response
+export const GROQ_MODEL = 'llama-3.3-70b-versatile'
+export const GROQ_FALLBACK_MODEL = 'llama-3.1-8b-instant'
 
 export function getOpenRouterClient(): OpenAI {
   const apiKey = process.env.OPENROUTER_API_KEY
@@ -20,6 +24,12 @@ export function getOpenRouterClient(): OpenAI {
       'X-Title': 'Agent Prospector',
     },
   })
+}
+
+export function getGroqClient(): OpenAI {
+  const apiKey = process.env.GROQ_API_KEY
+  if (!apiKey) throw new Error('GROQ_API_KEY is not set')
+  return new OpenAI({ apiKey, baseURL: GROQ_BASE })
 }
 
 // Checks which provider is available, prefers OpenRouter

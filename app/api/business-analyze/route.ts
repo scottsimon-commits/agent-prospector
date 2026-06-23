@@ -1,9 +1,12 @@
 import { NextRequest } from 'next/server'
 import {
   getOpenRouterClient,
+  getGroqClient,
   getAvailableProvider,
   BUSINESS_PROSPECT_MODEL,
   BUSINESS_PROSPECT_FALLBACK_MODEL,
+  GROQ_MODEL,
+  GROQ_FALLBACK_MODEL,
   BUSINESS_PROSPECT_SYSTEM_PROMPT,
 } from '@/lib/ai-provider'
 import { BusinessAnalyzeRequestSchema } from '@/lib/validation'
@@ -78,33 +81,58 @@ ${researchBrief}
 Prioritize the website content as your primary source. Use LinkedIn for team/company size details. Use search results for supplementary context. Return the complete JSON response only.`
 
   try {
-    const client = getOpenRouterClient()
+    const messages = [
+      { role: 'system' as const, content: BUSINESS_PROSPECT_SYSTEM_PROMPT },
+      { role: 'user' as const, content: userMessage },
+    ]
 
     let response
-    try {
-      response = await client.chat.completions.create({
-        model: BUSINESS_PROSPECT_MODEL,
-        stream: false,
-        max_tokens: 2000,
-        messages: [
-          { role: 'system', content: BUSINESS_PROSPECT_SYSTEM_PROMPT },
-          { role: 'user', content: userMessage },
-        ],
-      })
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : ''
-      if (msg.includes('429') || msg.includes('rate-limited') || msg.includes('503')) {
-        response = await client.chat.completions.create({
-          model: BUSINESS_PROSPECT_FALLBACK_MODEL,
+
+    // Groq first (fast LPU inference, free tier) — OpenRouter free tier is too slow
+    if (process.env.GROQ_API_KEY) {
+      const groq = getGroqClient()
+      try {
+        response = await groq.chat.completions.create({
+          model: GROQ_MODEL,
           stream: false,
           max_tokens: 2000,
-          messages: [
-            { role: 'system', content: BUSINESS_PROSPECT_SYSTEM_PROMPT },
-            { role: 'user', content: userMessage },
-          ],
+          messages,
         })
-      } else {
-        throw e
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : ''
+        if (msg.includes('429') || msg.includes('rate')) {
+          response = await groq.chat.completions.create({
+            model: GROQ_FALLBACK_MODEL,
+            stream: false,
+            max_tokens: 2000,
+            messages,
+          })
+        } else {
+          throw e
+        }
+      }
+    } else {
+      // OpenRouter fallback (slower on free tier)
+      const client = getOpenRouterClient()
+      try {
+        response = await client.chat.completions.create({
+          model: BUSINESS_PROSPECT_MODEL,
+          stream: false,
+          max_tokens: 2000,
+          messages,
+        })
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : ''
+        if (msg.includes('429') || msg.includes('rate-limited') || msg.includes('503')) {
+          response = await client.chat.completions.create({
+            model: BUSINESS_PROSPECT_FALLBACK_MODEL,
+            stream: false,
+            max_tokens: 2000,
+            messages,
+          })
+        } else {
+          throw e
+        }
       }
     }
 
