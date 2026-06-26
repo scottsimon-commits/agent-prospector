@@ -25,6 +25,9 @@ import {
   Globe,
   Link2,
   FileDown,
+  Printer,
+  UserSearch,
+  ShieldCheck,
 } from 'lucide-react'
 import type { BusinessProspectResult, AgentRecommendation } from '@/lib/types'
 import { useRouter } from 'next/navigation'
@@ -95,9 +98,12 @@ function RecommendationCard({ rec, isPrimary }: { rec: AgentRecommendation; isPr
             {rec.category}
           </span>
         </div>
-        <span className={`text-xs px-2 py-0.5 rounded-full font-medium shrink-0 ${complexityColor[rec.complexity]}`}>
-          {rec.complexity}
-        </span>
+        <div className="flex flex-col items-center gap-0.5 shrink-0 -mt-3">
+          <span className="text-[10px] text-muted-foreground leading-none">Build difficulty</span>
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${complexityColor[rec.complexity]}`}>
+            {rec.complexity}
+          </span>
+        </div>
       </div>
 
       <div>
@@ -108,7 +114,7 @@ function RecommendationCard({ rec, isPrimary }: { rec: AgentRecommendation; isPr
       <p className="text-xs text-muted-foreground leading-relaxed">{rec.description}</p>
 
       <div className="rounded-lg bg-muted/60 px-3 py-2 text-xs">
-        <span className="font-medium text-foreground">Why this company: </span>
+        <span className="font-medium text-foreground">Why this agent: </span>
         <span className="text-muted-foreground">{rec.whyThisCompany}</span>
       </div>
 
@@ -124,7 +130,7 @@ function RecommendationCard({ rec, isPrimary }: { rec: AgentRecommendation; isPr
         <div className="flex items-center gap-3">
           <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
             <Zap className="h-3 w-3" />
-            {rec.impact}
+            {rec.estimatedAnnualValue || rec.estimatedTimeSavedMonthly}
           </span>
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Clock className="h-3 w-3" />
@@ -159,6 +165,9 @@ export default function BusinessProspector() {
   const [loadingStep, setLoadingStep] = useState(0)
   const [apiMissing, setApiMissing] = useState(false)
   const [aiaLoading, setAiaLoading] = useState(false)
+  const [miaLoading, setMiaLoading] = useState(false)
+  const [contactResult, setContactResult] = useState<{ contacts: { name: string; title: string; source: string; confidence: string }[]; intelligence?: string; notes?: string } | null>(null)
+  const [findingContact, setFindingContact] = useState(false)
 
   useEffect(() => {
     if (phase !== 'researching' && phase !== 'analyzing') return
@@ -272,7 +281,7 @@ export default function BusinessProspector() {
         `Category: ${r.category} | Complexity: ${r.complexity} | Timeline: ${r.implementationTime}`,
         `${r.description}`,
         `Why: ${r.whyThisCompany}`,
-        `Impact: ${r.impact}`,
+        `ROI: ${r.estimatedAnnualValue} | ${r.roiTier} | ${r.roiMethodology}`,
         '',
       ]),
       '--- EXPANSION AGENTS ---',
@@ -280,7 +289,7 @@ export default function BusinessProspector() {
       ...expansion.flatMap((r) => [
         `#${r.rank} ${r.name} (${r.category})`,
         `${r.tagline}`,
-        `Impact: ${r.impact}`,
+        `ROI: ${r.estimatedAnnualValue}`,
         '',
       ]),
     ]
@@ -290,6 +299,149 @@ export default function BusinessProspector() {
         description: 'Paste directly into your AIA template.',
       })
     })
+  }
+
+  function printAIASummary() {
+    if (!result) return
+    const primary = result.recommendations.filter((r) => r.tier === 'primary')
+    const expansion = result.recommendations.filter((r) => r.tier === 'expansion')
+
+    const html = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>AIA Summary — ${result.company.name}</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; font-size: 12px; color: #1a1a1a; padding: 20px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .header { background: #1B2A4A; color: white; padding: 16px 20px; border-radius: 6px; margin-bottom: 20px; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+    .header h1 { font-size: 20px; font-weight: bold; color: white; }
+    .header p { font-size: 12px; color: #A9CCE3; margin-top: 4px; }
+    .section-title { font-size: 16px; font-weight: bold; color: #1B2A4A; border-bottom: 2px solid #1B2A4A; padding-bottom: 5px; margin: 18px 0 10px; break-after: avoid; page-break-after: avoid; }
+    .company-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 4px; }
+    .info-block { background: #f8f9fa; border-radius: 6px; padding: 10px 12px; }
+    .info-label { font-size: 10px; text-transform: uppercase; color: #666; font-weight: bold; margin-bottom: 6px; }
+    .list-item { display: flex; gap: 6px; margin: 3px 0; font-size: 11px; }
+    .list-item::before { content: "›"; color: #F59E0B; font-weight: bold; }
+    .agent-card { border: 1px solid #9ca3af; border-left: 4px solid #1B2A4A; border-radius: 6px; padding: 14px; margin-bottom: 12px; }
+    .agent-badges { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+    .badge-rank { background: #FEF3C7; color: #92400E; font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 999px; }
+    .badge-cat { background: #E0F2FE; color: #0369A1; font-size: 10px; padding: 2px 8px; border-radius: 999px; }
+    .agent-name { font-size: 14px; font-weight: bold; margin-bottom: 2px; }
+    .agent-tagline { font-size: 11px; color: #666; font-style: italic; margin-bottom: 8px; }
+    .agent-desc { font-size: 11px; color: #444; line-height: 1.5; margin-bottom: 8px; }
+    .why-box { background: #f3f4f6; border-radius: 4px; padding: 8px 10px; font-size: 11px; margin-bottom: 8px; }
+    .roi-box { background: #ECFDF5; border-radius: 4px; padding: 8px 10px; font-size: 11px; margin-bottom: 8px; }
+    .roi-tier { font-weight: bold; color: #065F46; margin-bottom: 2px; }
+    .roi-value { color: #059669; font-weight: bold; }
+    .tools { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+    .tool-tag { background: #F3F4F6; color: #374151; font-size: 10px; padding: 2px 8px; border-radius: 999px; }
+    .meta-row { display: flex; gap: 16px; font-size: 10px; color: #666; }
+    .exp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
+    .exp-card { border: 1px solid #9ca3af; border-left: 4px solid #3B82F6; border-radius: 6px; padding: 12px; break-inside: avoid; page-break-inside: avoid; }
+    .badge-num { background: #F3F4F6; color: #374151; font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 999px; }
+    .green { color: #059669; font-weight: bold; }
+    @page { size: 8.5in 11in; margin: 0.5in; }
+    @media print { body { padding: 0; } }
+    .agent-card { break-inside: avoid; page-break-inside: avoid; }
+    .company-grid { break-inside: avoid; page-break-inside: avoid; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${result.company.name}</h1>
+    <p>${result.company.industry} &nbsp;·&nbsp; ${result.company.businessType} &nbsp;·&nbsp; ${result.company.estimatedSize}</p>
+  </div>
+
+  <div class="company-grid">
+    <div class="info-block">
+      <div class="info-label">Primary Operations</div>
+      ${result.company.primaryOperations.map(op => `<div class="list-item">${op}</div>`).join('')}
+    </div>
+    <div class="info-block">
+      <div class="info-label">Key Pain Points</div>
+      ${result.company.keyPainPoints.map(p => `<div class="list-item">${p}</div>`).join('')}
+    </div>
+  </div>
+
+  <div class="section-title">&#9733; Top Recommendations — AIA Primary</div>
+  ${primary.map(r => `
+  <div class="agent-card">
+    <div class="agent-badges">
+      <span class="badge-rank">Top Pick #${r.rank}</span>
+      <span class="badge-cat">${r.category}</span>
+    </div>
+    <div class="agent-name">${r.name}</div>
+    <div class="agent-tagline">${r.tagline}</div>
+    <div class="agent-desc">${r.description}</div>
+    <div class="why-box"><strong>Why this agent:</strong> ${r.whyThisCompany}</div>
+    <div class="roi-box">
+      <div class="roi-tier">${r.roiTier}</div>
+      <div>Est. time saved: ${r.estimatedTimeSavedMonthly} &nbsp;|&nbsp; <span class="roi-value">${r.estimatedAnnualValue}</span></div>
+      <div style="color:#666;margin-top:2px;font-size:10px">${r.roiMethodology}</div>
+    </div>
+    <div class="tools">${r.tools.map(t => `<span class="tool-tag">${t}</span>`).join('')}</div>
+    <div class="meta-row"><span>Build difficulty: ${r.complexity}</span></div>
+  </div>`).join('')}
+
+  <div class="section-title">&#8681; Expansion Agents — Growth Roadmap</div>
+  <div class="exp-grid">
+    ${expansion.map(r => `
+    <div class="exp-card">
+      <div class="agent-badges">
+        <span class="badge-num">#${r.rank}</span>
+        <span class="badge-cat">${r.category}</span>
+      </div>
+      <div class="agent-name">${r.name}</div>
+      <div class="agent-tagline">${r.tagline}</div>
+      <div class="agent-desc">${r.description}</div>
+      <div class="why-box"><strong>Why this agent:</strong> ${r.whyThisCompany}</div>
+      <div class="roi-box">
+        <div class="roi-tier">${r.roiTier}</div>
+        <div>Est. time saved: ${r.estimatedTimeSavedMonthly} &nbsp;|&nbsp; <span class="roi-value">${r.estimatedAnnualValue}</span></div>
+        <div style="color:#666;margin-top:2px;font-size:10px">${r.roiMethodology}</div>
+      </div>
+      <div class="tools">${r.tools.map((t: string) => `<span class="tool-tag">${t}</span>`).join('')}</div>
+      <div class="meta-row"><span>Build difficulty: ${r.complexity}</span></div>
+    </div>`).join('')}
+  </div>
+</body>
+</html>`
+
+    const win = window.open('', '_blank')
+    if (!win) return
+    win.document.write(html)
+    win.document.close()
+    win.focus()
+    setTimeout(() => win.print(), 500)
+  }
+
+  async function generateMIA() {
+    if (!result) return
+    setMiaLoading(true)
+    try {
+      const res = await fetch('/api/generate-mia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ companyName: companyName.trim(), location: location.trim(), result }),
+      })
+      if (!res.ok) {
+        toast.error('Failed to generate MIA report')
+        return
+      }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `MIA_${companyName.trim().replace(/[^a-zA-Z0-9]/g, '_')}.docx`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('MIA report downloaded successfully')
+    } catch {
+      toast.error('Download failed — please try again')
+    } finally {
+      setMiaLoading(false)
+    }
   }
 
   async function generateAIA() {
@@ -327,6 +479,30 @@ export default function BusinessProspector() {
     setCompanyName('')
     setLocation('')
     setContext('')
+    setContactResult(null)
+  }
+
+  async function findContact() {
+    if (!result) return
+    setFindingContact(true)
+    setContactResult(null)
+    try {
+      const res = await fetch('/api/find-contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          companyName: result.company.name,
+          location: companyName + ' ' + location,
+          websiteUrl: result.websiteUrl ?? null,
+        }),
+      })
+      const data = await res.json()
+      setContactResult(data)
+    } catch {
+      setContactResult({ contacts: [], notes: 'Search failed. Please try again.' })
+    } finally {
+      setFindingContact(false)
+    }
   }
 
   if (phase === 'researching' || phase === 'analyzing') {
@@ -509,15 +685,94 @@ export default function BusinessProspector() {
             <Copy className="h-4 w-4" />
             Copy AIA Summary
           </Button>
+          <Button onClick={printAIASummary} variant="secondary" className="gap-2">
+            <Printer className="h-4 w-4" />
+            AIA Summary PDF
+          </Button>
           <Button onClick={generateAIA} variant="secondary" className="gap-2" disabled={aiaLoading}>
             {aiaLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileDown className="h-4 w-4" />}
             {aiaLoading ? 'Generating…' : 'Generate AIA Report'}
+          </Button>
+          <Button onClick={generateMIA} variant="secondary" className="gap-2" disabled={miaLoading}>
+            {miaLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Briefcase className="h-4 w-4" />}
+            {miaLoading ? 'Generating…' : 'Generate MIA Report'}
+          </Button>
+          <Button onClick={findContact} variant="secondary" className="gap-2" disabled={findingContact}>
+            {findingContact ? <Loader2 className="h-4 w-4 animate-spin" /> : <UserSearch className="h-4 w-4" />}
+            {findingContact ? 'Searching…' : 'Find Decision Maker'}
           </Button>
           <Button onClick={reset} variant="outline" className="gap-2">
             <RotateCcw className="h-4 w-4" />
             Research Another Company
           </Button>
         </div>
+
+        {/* Contact Finder Results */}
+        {contactResult && (
+          <div className="rounded-xl border bg-card p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <UserSearch className="h-5 w-5 text-primary" />
+              <h2 className="font-bold text-base">Decision Maker Contacts</h2>
+            </div>
+
+            {contactResult.contacts.length > 0 && (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {contactResult.contacts.map((c, i) => (
+                  <div key={i} className="rounded-lg border bg-muted/30 p-4 space-y-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <p className="font-semibold text-sm">{c.name}</p>
+                        <p className="text-xs text-muted-foreground">{c.title}</p>
+                      </div>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${
+                        c.confidence === 'HIGH'
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                          : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
+                      }`}>
+                        {c.confidence}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                      <ShieldCheck className="h-3 w-3 shrink-0" />
+                      {c.source}
+                    </p>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 text-xs px-2 gap-1 mt-1"
+                      onClick={() => {
+                        navigator.clipboard.writeText(`${c.name}\n${c.title}`)
+                        toast.success('Contact copied')
+                      }}
+                    >
+                      <Copy className="h-3 w-3" />
+                      Copy
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {contactResult.intelligence && (
+              <div className="rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 p-4 space-y-1.5">
+                <p className="text-xs font-semibold text-blue-800 dark:text-blue-300 uppercase tracking-wide">Research Intelligence</p>
+                <p className="text-sm text-blue-900 dark:text-blue-200 leading-relaxed">{contactResult.intelligence}</p>
+              </div>
+            )}
+
+            {contactResult.contacts.length === 0 && !contactResult.intelligence && (
+              <p className="text-sm text-muted-foreground">No information found through public web sources. Consider checking the SD Secretary of State database manually at <span className="font-medium">sosenterprise.sd.gov</span>.</p>
+            )}
+
+            {contactResult.notes && (
+              <p className="text-xs text-muted-foreground italic border-t pt-3">{contactResult.notes}</p>
+            )}
+            <p className="text-[11px] text-muted-foreground border-t pt-3">
+              ⚠️ Always verify contacts before mailing. For legal officer confirmation, cross-check at <span className="font-medium">sosenterprise.sd.gov</span>.
+            </p>
+          </div>
+        )}
+
       </div>
     )
   }
