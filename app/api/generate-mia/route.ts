@@ -450,7 +450,8 @@ Plus 3 MIND infrastructure agents (always included):
           children: [para(txt('', { size: 18 }))] }),
         new TableCell({ width: { size: roiCols[1], type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
           children: [
-            para(txt('Business Builder', { bold: true, color: WHITE, size: 21, caps: true }), { after: 40 }),
+            para(txt('Business Builder', { bold: true, color: WHITE, size: 21, caps: true }), { after: 20 }),
+            para(txt('★ Recommended', { color: GOLD, size: 17, bold: true }), { after: 20 }),
             para(txt('Build · Launch · Grow', { color: 'A9CCE3', size: 17, italic: true }), { after: 0 }),
           ] }),
         new TableCell({ width: { size: roiCols[2], type: WidthType.DXA }, shading: { fill: BLUE, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
@@ -511,7 +512,7 @@ Plus 3 MIND infrastructure agents (always included):
   children.push(spacer(100))
   children.push(new Paragraph({
     spacing: { before: 0, after: 160 },
-    children: [new TextRun({ text: 'Business Builder includes full-service consulting, implementation, ongoing optimization, training, and growth support from the Astra AI team. Self-Hosted MIND includes platform licensing and deployment on your own infrastructure — ideal for organizations prioritizing data sovereignty. Agentic integrations and custom solutions are additional for both paths.', font: 'Arial', size: 17, italics: true, color: FTNOTE })],
+    children: [new TextRun({ text: 'Business Builder includes dedicated implementation, ongoing optimization, training, and growth consulting directly from the Astra AI team — the support infrastructure that drives these results for most organizations. Self-Hosted ROI projections are achievable for organizations with proficient internal IT infrastructure management and self-directed platform optimization.', font: 'Arial', size: 17, italics: true, color: FTNOTE })],
   }))
 
   // ── SPECIFIC IMPACT AREAS ───────────────────────────────────────────────────
