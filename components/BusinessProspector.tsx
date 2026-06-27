@@ -571,6 +571,12 @@ export default function BusinessProspector() {
 
     return (
       <div className="space-y-8">
+        {/* Document Title */}
+        <div className="rounded-2xl bg-[#1F3864] px-6 py-5 text-center shadow-sm">
+          <h1 className="text-xl font-bold uppercase tracking-widest text-white">Agentic Impact Assessment</h1>
+          <p className="mt-1 text-sm italic text-[#A9CCE3]">Prepared exclusively for {result.company.name}</p>
+        </div>
+
         {/* Company Profile */}
         <div className="rounded-2xl border bg-card p-5 shadow-sm">
           <div className="flex items-start justify-between gap-3 flex-wrap">
