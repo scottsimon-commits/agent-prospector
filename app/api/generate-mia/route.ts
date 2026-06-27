@@ -70,6 +70,12 @@ function stripJsonFences(text: string): string {
   return text.replace(/^```(?:json)?\s*\n?/m, '').replace(/\n?```\s*$/m, '').trim()
 }
 
+interface AgentValue {
+  name: string
+  conservative: number
+  fullPotential: number
+}
+
 interface MIAIntel {
   knowledgeWorkerPercent: number
   knowledgeWorkerRationale: string
@@ -80,6 +86,7 @@ interface MIAIntel {
   specificImpactAreas: { title: string; body: string }[]
   agentAmplifierNote: string
   competitiveUrgencyNote: string
+  agentValues: AgentValue[]
 }
 
 const MIND_AGENTS = [
@@ -139,7 +146,7 @@ Return ONLY valid JSON, no explanation, no code fences:
   "knowledgeWorkerPercent": number (10-90, what % of total employees do primarily knowledge/information work — manufacturing ~30%, electronics/distribution ~50%, finance/banking ~70%+),
   "knowledgeWorkerRationale": "1 sentence — why this % fits this specific company",
   "fullyLoadedWageUSD": number (annual fully-loaded cost including benefits/overhead, specific to industry AND geography — SD/Midwest wages are lower than coastal),
-  "wageRationale": "1 sentence — industry and geographic basis",
+  "wageRationale": "short phrase only — format: 'Regional benchmark for [specific industry type] knowledge workers (fully-loaded) relative to [region/area]' — no additional explanation",
   "whyMindOpening": "2-3 sentences addressing something specific about this company that sets up why MIND matters. Reference something real about their operations.",
   "institutionalKnowledgeRisk": "2-3 sentences — the concrete knowledge risk this company faces. What specifically walks out the door when someone leaves?",
   "specificImpactAreas": [
@@ -148,8 +155,18 @@ Return ONLY valid JSON, no explanation, no code fences:
     { "title": "...", "body": "..." }
   ],
   "agentAmplifierNote": "2-3 sentences on how MIND specifically amplifies the AI agents already recommended for this company",
-  "competitiveUrgencyNote": "2-3 sentences of competitive urgency specific to their industry"
-}`
+  "competitiveUrgencyNote": "2-3 sentences of competitive urgency specific to their industry",
+  "agentValues": [
+    { "name": "exact agent name from the list below", "conservative": number, "fullPotential": number },
+    ... one entry per agent (all 10 total)
+  ]
+}
+
+For agentValues: include ALL 10 agents — the 7 AIA agents listed below plus these 3 MIND infrastructure agents:
+- Knowledge Capture Agent: captures institutional knowledge continuously into MIND graph
+- Cross-System Intelligence Agent: bridges ERP/CRM/email into unified query layer
+- Onboarding Intelligence Agent: accelerates new hire ramp from 6mo to 2.5mo via institutional memory
+Conservative = minimum realistic annual value with basic adoption. Full Potential = annual value with strong adoption and integration. Values in USD. Be specific to this company's size, industry, and geography.`
 
   const userMessage = `Company: ${shortName}
 Industry: ${company.industry}
@@ -160,8 +177,13 @@ Primary Operations: ${company.primaryOperations.join(', ')}
 Key Pain Points: ${company.keyPainPoints.join(', ')}
 Technology Profile: ${company.technologyProfile}
 
-AI Agents already recommended for this company:
-${aiaAgents.map(r => `- ${r.name} (${r.category}): ${r.description}`).join('\n')}`
+AI Agents already recommended for this company (7 AIA agents):
+${aiaAgents.map(r => `- ${r.name} (${r.category}): ${r.description}`).join('\n')}
+
+Plus 3 MIND infrastructure agents (always included):
+- Knowledge Capture Agent (Knowledge Infrastructure): Continuously extracts and indexes institutional knowledge from meetings, conversations, documents, and expert sessions into the MIND knowledge graph.
+- Cross-System Intelligence Agent (Enterprise Integration): Bridges ERP, CRM, email platform, production systems, and document libraries into a single intelligent query layer powered by MIND.
+- Onboarding Intelligence Agent (Human Capital): Delivers personalized, conversational access to the organization's complete institutional memory for new hires — reducing ramp time from ~6 months to ~2.5 months.`
 
   let intel: MIAIntel
   try {
@@ -171,7 +193,7 @@ ${aiaAgents.map(r => `- ${r.name} (${r.category}): ${r.description}`).join('\n')
       response = await groq.chat.completions.create({
         model: GROQ_MODEL,
         stream: false,
-        max_tokens: 1500,
+        max_tokens: 2200,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userMessage },
@@ -183,7 +205,7 @@ ${aiaAgents.map(r => `- ${r.name} (${r.category}): ${r.description}`).join('\n')
         response = await groq.chat.completions.create({
           model: GROQ_FALLBACK_MODEL,
           stream: false,
-          max_tokens: 1500,
+          max_tokens: 2200,
           messages: [
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userMessage },
@@ -207,6 +229,12 @@ ${aiaAgents.map(r => `- ${r.name} (${r.category}): ${r.description}`).join('\n')
       ],
       agentAmplifierNote: 'The AI agents recommended for your business will perform significantly better when powered by MIND\'s knowledge graph — because they\'ll have access to your complete institutional context rather than operating in isolation with no memory of your business.',
       competitiveUrgencyNote: 'Organizations in your industry are beginning to deploy knowledge graph infrastructure. The companies that move first will have a compounding intelligence advantage that late adopters simply cannot overcome by throwing money at the problem later.',
+      agentValues: [
+        ...aiaAgents.map(a => ({ name: a.name, conservative: 15000, fullPotential: 35000 })),
+        { name: 'Knowledge Capture Agent', conservative: 20000, fullPotential: 50000 },
+        { name: 'Cross-System Intelligence Agent', conservative: 18000, fullPotential: 45000 },
+        { name: 'Onboarding Intelligence Agent', conservative: 25000, fullPotential: 60000 },
+      ],
     }
   }
 
@@ -214,40 +242,66 @@ ${aiaAgents.map(r => `- ${r.name} (${r.category}): ${r.description}`).join('\n')
   const totalEmployees = parseEmployeeCount(company.estimatedSize)
   const kwPct = Math.min(90, Math.max(10, intel.knowledgeWorkerPercent))
   const kw = Math.max(1, Math.round(totalEmployees * kwPct / 100))
-  const wage = intel.fullyLoadedWageUSD
+  const wage = Math.min(150000, Math.max(45000, intel.fullyLoadedWageUSD))
 
+  // MIND Platform value
   const searchSavings = Math.round(kw * wage * 0.20 * 0.35)
   const productivityValue = Math.round(kw * wage * 0.20)
-  const conservative = productivityValue
-  const upperRange = searchSavings + productivityValue
+  const mindConservative = productivityValue
+  const mindFullPotential = searchSavings + productivityValue
   const hoursRecovered = Math.round(kw * 2000 * 0.20 * 0.35)
-  const fteEquivalent = Math.round(conservative / wage)
 
-  // Business Builder ($50K + $10K/month)
+  // Agent Portfolio value (from Groq estimates)
+  const agentVals: AgentValue[] = Array.isArray(intel.agentValues) ? intel.agentValues : []
+  const agentConservative = agentVals.reduce((s, a) => s + (Number(a.conservative) || 0), 0)
+  const agentFullPotential = agentVals.reduce((s, a) => s + (Number(a.fullPotential) || 0), 0)
+
+  // Combined totals
+  const combinedConservative = mindConservative + agentConservative
+  const combinedFullPotential = mindFullPotential + agentFullPotential
+  const fteEquivalent = Math.round(mindConservative / wage)
+
+  // Business Builder ($50K + $10K/month) — ROI against combined conservative
   const bbSetup = 50000, bbMonthly = 10000
-  const bbY1 = bbSetup + bbMonthly * 12       // $170,000
-  const bbAnnual = bbMonthly * 12             // $120,000
-  const bb5yr = bbY1 + bbAnnual * 4           // $650,000
-  const bbY1ROI = Math.round((conservative / bbY1 - 1) * 100)
-  const bbPayback = Math.round(bbY1 / (conservative / 365))
-  const bb5yrValue = conservative * 5
-  const bb5yrNet = bb5yrValue - bb5yr
-  const bb5yrROI = Math.round((bb5yrNet / bb5yr) * 100)
+  const bbY1 = bbSetup + bbMonthly * 12
+  const bbAnnual = bbMonthly * 12
+  const bb5yr = bbY1 + bbAnnual * 4
+  const bbY1ROIcons = Math.round((combinedConservative / bbY1 - 1) * 100)
+  const bbY1ROIfull = Math.round((combinedFullPotential / bbY1 - 1) * 100)
+  const bbPayback = Math.round(bbY1 / (combinedConservative / 365))
+  const bb5yrNetCons = combinedConservative * 5 - bb5yr
+  const bb5yrNetFull = combinedFullPotential * 5 - bb5yr
+  const bb5yrROICons = Math.round((bb5yrNetCons / bb5yr) * 100)
+  const bb5yrROIFull = Math.round((bb5yrNetFull / bb5yr) * 100)
 
   // Self-Hosted ($49K + $5K/month)
   const shSetup = 49000, shMonthly = 5000
-  const shY1 = shSetup + shMonthly * 12       // $109,000
-  const shAnnual = shMonthly * 12             // $60,000
-  const sh5yr = shY1 + shAnnual * 4           // $349,000
-  const shY1ROI = Math.round((conservative / shY1 - 1) * 100)
-  const shPayback = Math.round(shY1 / (conservative / 365))
-  const sh5yrValue = conservative * 5
-  const sh5yrNet = sh5yrValue - sh5yr
-  const sh5yrROI = Math.round((sh5yrNet / sh5yr) * 100)
+  const shY1 = shSetup + shMonthly * 12
+  const shAnnual = shMonthly * 12
+  const sh5yr = shY1 + shAnnual * 4
+  const shY1ROIcons = Math.round((combinedConservative / shY1 - 1) * 100)
+  const shY1ROIfull = Math.round((combinedFullPotential / shY1 - 1) * 100)
+  const shPayback = Math.round(shY1 / (combinedConservative / 365))
+  const sh5yrNetCons = combinedConservative * 5 - sh5yr
+  const sh5yrNetFull = combinedFullPotential * 5 - sh5yr
+  const sh5yrROICons = Math.round((sh5yrNetCons / sh5yr) * 100)
+  const sh5yrROIFull = Math.round((sh5yrNetFull / sh5yr) * 100)
 
   // ── BUILD DOCUMENT ──────────────────────────────────────────────────────────
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const children: any[] = []
+
+  // ── DOCUMENT TITLE ─────────────────────────────────────────────────────────
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 0, after: 60 },
+    children: [new TextRun({ text: 'MIND Impact Assessment', font: 'Arial', size: 36, bold: true, color: NAVY, allCaps: true })],
+  }))
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 0, after: 200 },
+    children: [new TextRun({ text: `Prepared exclusively for ${shortName}`, font: 'Arial', size: 22, color: DGRAY, italics: true })],
+  }))
 
   // ── HEADER BANNER ──────────────────────────────────────────────────────────
   children.push(new Table({
@@ -372,48 +426,64 @@ ${aiaAgents.map(r => `- ${r.name} (${r.category}): ${r.description}`).join('\n')
   }))
 
   children.push(spacer(160))
-  children.push(para(txt('Annual Search Time Savings', { bold: true, color: NAVY, size: 22 }), { after: 60 }))
-  children.push(para(txt(`${kw} knowledge workers × ${fmt(wage)} × 20% (search time) × 35% (reduction) = ${fmt(searchSavings)}/year in recovered search time`, { size: 21 }), { after: 60 }))
+  children.push(para(txt('Search Time Savings', { bold: true, color: NAVY, size: 22 }), { after: 60 }))
+  children.push(para(txt(`${kw} knowledge workers × ${fmt(wage)} × 20% (search time) × 35% (RAG reduction) = ${fmt(searchSavings)}/year in recovered search time`, { size: 21 }), { after: 60 }))
   children.push(para(txt(`This translates to approximately ${hoursRecovered.toLocaleString()} hours recovered annually — hours currently spent hunting for information.`, { italic: true, color: BLUE, size: 21 }), { after: 140 }))
 
-  children.push(para(txt('Annual Productivity Improvement (Conservative 20%)', { bold: true, color: NAVY, size: 22 }), { after: 60 }))
-  children.push(para(txt(`${kw} knowledge workers × ${fmt(wage)} × 20% productivity improvement = ${fmt(productivityValue)}/year in productivity value`, { size: 21 }), { after: 0 }))
+  children.push(para(txt('Productivity Gains', { bold: true, color: NAVY, size: 22 }), { after: 60 }))
+  children.push(para(txt(`${kw} knowledge workers × ${fmt(wage)} × 20% productivity improvement = ${fmt(productivityValue)}/year in productivity value`, { size: 21 }), { after: 60 }))
+  children.push(para(txt('Both are independently realized — search time savings reflect direct time recovery, while productivity gains reflect the broader performance uplift when knowledge is instantly accessible.', { italic: true, color: BLUE, size: 21 }), { after: 0 }))
 
-  // ── ANNUAL VALUE SUMMARY TABLE ──────────────────────────────────────────────
-  children.push(spacer(200), sectionHeader('Annual Value Summary', NAVY), spacer(80))
+  // ── COMBINED ROI SUMMARY TABLE ──────────────────────────────────────────────
+  children.push(spacer(200), sectionHeader('Combined ROI Summary', NAVY), spacer(80))
+  children.push(para(txt('The total value of the MIND ecosystem — platform infrastructure plus The Transformational 10 agent suite — is shown below across both the conservative and full potential range.', { size: 22 }), { after: 140 }))
+
+  const valCols = [3600, (CW - 3600) >> 1, CW - 3600 - ((CW - 3600) >> 1)]
   children.push(new Table({
     width: { size: CW, type: WidthType.DXA },
-    columnWidths: [5200, CW - 5200],
+    columnWidths: valCols,
     borders: aB(MGRAY),
     rows: [
       new TableRow({ children: [
-        new TableCell({ width: { size: 5200, type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
-          children: [para(txt('Value Driver', { bold: true, color: WHITE, size: 20, caps: true }))] }),
-        new TableCell({ width: { size: CW - 5200, type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
-          children: [
-            para(txt('Annual Estimate', { bold: true, color: WHITE, size: 20, caps: true }), { after: 0 }),
-            para(txt('(conservative)', { color: 'A9CCE3', size: 16, italic: true }), { before: 0 }),
-          ] }),
+        new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: LGRAY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
+          children: [para(txt('Value Source', { bold: true, color: NAVY, size: 20, caps: true }))] }),
+        new TableCell({ width: { size: valCols[1], type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
+          children: [para(txt('Conservative', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+        new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: TEAL, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
+          children: [para(txt('Full Potential', { bold: true, color: WHITE, size: 20, caps: true }))] }),
       ] }),
-      ...([
-        ['Search Time Savings', fmt(searchSavings), false],
-        ['Productivity Improvement', fmt(productivityValue), false],
-        ['Conservative Annual Value', fmt(conservative), true],
-        ['Upper-Range Annual Value (composite)', fmt(upperRange), false],
-      ] as [string, string, boolean][]).map(([driver, value, highlight], i) => new TableRow({ children: [
-        new TableCell({ width: { size: 5200, type: WidthType.DXA }, shading: { fill: highlight ? 'D5E8F0' : (i % 2 === 0 ? 'D6EAF8' : 'EAF2FB'), type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
-          children: [para(txt(driver, { bold: highlight, color: NAVY, size: 20 }))] }),
-        new TableCell({ width: { size: CW - 5200, type: WidthType.DXA }, shading: { fill: highlight ? 'D5E8F0' : (i % 2 === 0 ? 'FEF9E7' : WHITE), type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
-          children: [para(txt(value, { bold: true, color: highlight ? NAVY : '7D6608', size: 20 }))] }),
-      ] })),
+      new TableRow({ children: [
+        new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: 'D6EAF8', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
+          children: [para(txt('MIND Platform', { bold: true, color: NAVY, size: 20 }))] }),
+        new TableCell({ width: { size: valCols[1], type: WidthType.DXA }, shading: { fill: LGRAY, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
+          children: [para(txt(fmt(mindConservative), { bold: true, color: DGRAY, size: 20 }))] }),
+        new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: LGRAY, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
+          children: [para(txt(fmt(mindFullPotential), { bold: true, color: DGRAY, size: 20 }))] }),
+      ] }),
+      new TableRow({ children: [
+        new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: 'EAF2FB', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
+          children: [para(txt('Agent Portfolio (10 Agents)', { bold: true, color: NAVY, size: 20 }))] }),
+        new TableCell({ width: { size: valCols[1], type: WidthType.DXA }, shading: { fill: WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
+          children: [para(txt(fmt(agentConservative), { bold: true, color: DGRAY, size: 20 }))] }),
+        new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
+          children: [para(txt(fmt(agentFullPotential), { bold: true, color: DGRAY, size: 20 }))] }),
+      ] }),
+      new TableRow({ children: [
+        new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
+          children: [para(txt('Combined Annual Value', { bold: true, color: WHITE, size: 21 }))] }),
+        new TableCell({ width: { size: valCols[1], type: WidthType.DXA }, shading: { fill: '1A3A5C', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
+          children: [para(txt(fmt(combinedConservative), { bold: true, color: WHITE, size: 21 }))] }),
+        new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: '0E8070', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
+          children: [para(txt(fmt(combinedFullPotential), { bold: true, color: WHITE, size: 21 }))] }),
+      ] }),
     ],
   }))
   children.push(spacer(80))
   children.push(new Paragraph({
     spacing: { before: 0, after: 100 },
-    children: [new TextRun({ text: 'Note: Search time savings overlap with broader productivity improvement. The conservative figure uses the 20% productivity improvement as the primary metric. The composite upper-range represents the scenario where both gains are fully additive.', font: 'Arial', size: 17, italics: true, color: FTNOTE })],
+    children: [new TextRun({ text: 'Conservative reflects documented productivity benchmarks with standard adoption. Full Potential reflects comprehensive platform and agent adoption — actual results will vary based on implementation depth, usage, and organizational engagement. MIND Platform and Agent Portfolio values are independently generated; some productivity gains may be realized across both layers.', font: 'Arial', size: 17, italics: true, color: FTNOTE })],
   }))
-  children.push(para(txt(`${fmt(conservative)} in annual value is the equivalent of ${fteEquivalent > 0 ? fteEquivalent : 1} full-time employee${fteEquivalent !== 1 ? 's\'' : '\'s'} annual output returned to productive, value-creating work — without adding a single headcount.`, { italic: true, color: BLUE, size: 22 }), { after: 0 }))
+  children.push(para(txt(`${fmt(mindConservative)} in annual MIND Platform value alone is the equivalent of ${fteEquivalent > 0 ? fteEquivalent : 1} full-time employee${fteEquivalent !== 1 ? 's\'' : '\'s'} output returned to productive, value-creating work — before a single agent is deployed.`, { italic: true, color: BLUE, size: 22 }), { after: 0 }))
 
   // ── INVESTMENT & ROI ────────────────────────────────────────────────────────
   children.push(spacer(200), sectionHeader('Investment & ROI', NAVY), spacer(80))
@@ -455,18 +525,16 @@ ${aiaAgents.map(r => `- ${r.name} (${r.category}): ${r.description}`).join('\n')
         new TableCell({ width: { size: roiCols[2], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? LGRAY : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
           children: [para(txt(sh, { bold: true, color: DGRAY, size: 20 }))] }),
       ] })),
-      // Spacer row
+      // ROI subheader
       new TableRow({ children: [
         new TableCell({ columnSpan: 3, width: { size: CW, type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 80, bottom: 80, left: 140, right: 140 },
-          children: [para(txt('Return on Investment', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+          children: [para(txt('Return on Investment — Conservative Range', { bold: true, color: WHITE, size: 20, caps: true }))] }),
       ] }),
-      // ROI rows
       ...([
-        ['Year 1 ROI (Conservative)', `${bbY1ROI}%`, `${shY1ROI}%`],
-        ['Payback Period', `~${bbPayback} days`, `~${shPayback} days`],
-        ['5-Year Total Value', fmt(bb5yrValue), fmt(sh5yrValue)],
-        ['5-Year Net Benefit', fmt(bb5yrNet), fmt(sh5yrNet)],
-        ['5-Year ROI', `${bb5yrROI}%`, `${sh5yrROI}%`],
+        ['Year 1 ROI (Conservative)', `${bbY1ROIcons}%`, `${shY1ROIcons}%`],
+        ['Payback Period (Conservative)', `~${bbPayback} days`, `~${shPayback} days`],
+        ['5-Year Net Benefit (Conservative)', fmt(bb5yrNetCons), fmt(sh5yrNetCons)],
+        ['5-Year ROI (Conservative)', `${bb5yrROICons}%`, `${sh5yrROICons}%`],
       ] as [string, string, string][]).map(([label, bb, sh], i) => new TableRow({ children: [
         new TableCell({ width: { size: roiCols[0], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'D6EAF8' : 'EAF2FB', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
           children: [para(txt(label, { bold: true, color: NAVY, size: 20 }))] }),
@@ -474,6 +542,23 @@ ${aiaAgents.map(r => `- ${r.name} (${r.category}): ${r.description}`).join('\n')
           children: [para(txt(bb, { bold: true, color: '7D6608', size: 20 }))] }),
         new TableCell({ width: { size: roiCols[2], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'FEF9E7' : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
           children: [para(txt(sh, { bold: true, color: '7D6608', size: 20 }))] }),
+      ] })),
+      // Full Potential ROI subheader
+      new TableRow({ children: [
+        new TableCell({ columnSpan: 3, width: { size: CW, type: WidthType.DXA }, shading: { fill: TEAL, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 80, bottom: 80, left: 140, right: 140 },
+          children: [para(txt('Return on Investment — Full Potential Range', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+      ] }),
+      ...([
+        ['Year 1 ROI (Full Potential)', `${bbY1ROIfull}%`, `${shY1ROIfull}%`],
+        ['5-Year Net Benefit (Full Potential)', fmt(bb5yrNetFull), fmt(sh5yrNetFull)],
+        ['5-Year ROI (Full Potential)', `${bb5yrROIFull}%`, `${sh5yrROIFull}%`],
+      ] as [string, string, string][]).map(([label, bb, sh], i) => new TableRow({ children: [
+        new TableCell({ width: { size: roiCols[0], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'E8F8F5' : 'F0FBF8', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [para(txt(label, { bold: true, color: TEAL, size: 20 }))] }),
+        new TableCell({ width: { size: roiCols[1], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'D5F5E3' : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [para(txt(bb, { bold: true, color: '0E6655', size: 20 }))] }),
+        new TableCell({ width: { size: roiCols[2], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'D5F5E3' : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [para(txt(sh, { bold: true, color: '0E6655', size: 20 }))] }),
       ] })),
     ],
   }))
@@ -499,23 +584,35 @@ ${aiaAgents.map(r => `- ${r.name} (${r.category}): ${r.description}`).join('\n')
   children.push(para(txt('Generic AI tools fail because they don\'t understand your business context. Agents powered by MIND\'s knowledge graph have access to your complete institutional memory — every process, every decision, every customer nuance. The result: agents that don\'t hallucinate, don\'t guess, and deliver measurable ROI from day one.', { size: 22 }), { after: 120 }))
   children.push(para(txt(intel.agentAmplifierNote, { size: 22, italic: true, color: BLUE }), { after: 160 }))
 
+  const valByName = new Map(agentVals.map(v => [v.name.toLowerCase(), v]))
+
   const allT10 = [
-    ...aiaAgents.map((a, i) => ({
-      num: i + 1,
-      name: a.name,
-      category: a.category,
-      description: a.description,
-      impact: `${a.estimatedAnnualValue || ''}${a.estimatedTimeSavedMonthly && a.estimatedTimeSavedMonthly !== 'N/A' ? ' | Est. time saved: ' + a.estimatedTimeSavedMonthly : ''}`.trim().replace(/^\s*\|\s*/, ''),
-      isMind: false,
-    })),
-    ...MIND_AGENTS.map((a, i) => ({
-      num: aiaAgents.length + i + 1,
-      name: a.name,
-      category: a.category,
-      description: a.description,
-      impact: a.impact,
-      isMind: true,
-    })),
+    ...aiaAgents.map((a, i) => {
+      const v = valByName.get(a.name.toLowerCase())
+      return {
+        num: i + 1,
+        name: a.name,
+        category: a.category,
+        description: a.description,
+        impact: `${a.estimatedTimeSavedMonthly && a.estimatedTimeSavedMonthly !== 'N/A' ? 'Est. time saved: ' + a.estimatedTimeSavedMonthly : ''}`.trim(),
+        conservative: v?.conservative ?? 0,
+        fullPotential: v?.fullPotential ?? 0,
+        isMind: false,
+      }
+    }),
+    ...MIND_AGENTS.map((a, i) => {
+      const v = valByName.get(a.name.toLowerCase())
+      return {
+        num: aiaAgents.length + i + 1,
+        name: a.name,
+        category: a.category,
+        description: a.description,
+        impact: a.impact,
+        conservative: v?.conservative ?? 0,
+        fullPotential: v?.fullPotential ?? 0,
+        isMind: true,
+      }
+    }),
   ]
 
   const t10ColW = [600, 2800, CW - 3400]
@@ -545,7 +642,8 @@ ${aiaAgents.map(r => `- ${r.name} (${r.category}): ${r.description}`).join('\n')
           new TableCell({ width: { size: t10ColW[2], type: WidthType.DXA }, shading: { fill: bgRight, type: ShadingType.CLEAR }, borders: aNB(), margins: sm,
             children: [
               para(txt(agent.description, { size: 20 }), { after: 60 }),
-              ...(agent.impact ? [para(txt(agent.impact, { size: 18, color: '7D6608', bold: true }), { after: 0 })] : []),
+              ...(agent.impact ? [para(txt(agent.impact, { size: 18, color: '7D6608', bold: true }), { after: 60 })] : []),
+              ...(agent.conservative > 0 ? [para(txt(`Conservative: ${fmt(agent.conservative)}  |  Full Potential: ${fmt(agent.fullPotential)}`, { size: 17, color: agent.isMind ? TEAL : BLUE, bold: true }), { after: 0 })] : []),
             ] }),
         ] })
       }),
@@ -554,6 +652,52 @@ ${aiaAgents.map(r => `- ${r.name} (${r.category}): ${r.description}`).join('\n')
 
   children.push(spacer(100))
   children.push(para(txt('When you layer agents on top of MIND\'s knowledge graph, the agents get smarter as you feed them more data through the infrastructure, and the infrastructure gets optimized based on how the agents perform. Value compounds over time — this isn\'t a static tool, it\'s a system that grows with your business.', { size: 22 }), { after: 0 }))
+
+  // ── AGENT PORTFOLIO VALUE ───────────────────────────────────────────────────
+  children.push(spacer(200), sectionHeader('Agent Portfolio Value Summary', NAVY), spacer(80))
+  children.push(para(txt('The following table reflects estimated annual value for each of the 10 agents specific to your organization — independently of the MIND Platform value already calculated above.', { size: 22 }), { after: 140 }))
+
+  const portColW = [3800, (CW - 3800) >> 1, CW - 3800 - ((CW - 3800) >> 1)]
+  children.push(new Table({
+    width: { size: CW, type: WidthType.DXA },
+    columnWidths: portColW,
+    borders: aB(MGRAY),
+    rows: [
+      new TableRow({ children: [
+        new TableCell({ width: { size: portColW[0], type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
+          children: [para(txt('Agent', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+        new TableCell({ width: { size: portColW[1], type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
+          children: [para(txt('Conservative', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+        new TableCell({ width: { size: portColW[2], type: WidthType.DXA }, shading: { fill: TEAL, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
+          children: [para(txt('Full Potential', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+      ] }),
+      ...allT10.map((agent, i) => new TableRow({ children: [
+        new TableCell({ width: { size: portColW[0], type: WidthType.DXA }, shading: { fill: agent.isMind ? (i % 2 === 0 ? 'E8F8F5' : 'F0FBF8') : (i % 2 === 0 ? 'D6EAF8' : 'EAF2FB'), type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [
+            para(txt(agent.name, { bold: true, color: agent.isMind ? TEAL : NAVY, size: 19 }), { after: agent.isMind ? 30 : 0 }),
+            ...(agent.isMind ? [para(txt('MIND Infrastructure', { color: TEAL, size: 16, italic: true }), { after: 0 })] : []),
+          ] }),
+        new TableCell({ width: { size: portColW[1], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? LGRAY : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [para(txt(agent.conservative > 0 ? fmt(agent.conservative) : '—', { bold: true, color: DGRAY, size: 19 }))] }),
+        new TableCell({ width: { size: portColW[2], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? LGRAY : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [para(txt(agent.fullPotential > 0 ? fmt(agent.fullPotential) : '—', { bold: true, color: DGRAY, size: 19 }))] }),
+      ] })),
+      // Totals row
+      new TableRow({ children: [
+        new TableCell({ width: { size: portColW[0], type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
+          children: [para(txt('Total Agent Portfolio (Annual)', { bold: true, color: WHITE, size: 20 }))] }),
+        new TableCell({ width: { size: portColW[1], type: WidthType.DXA }, shading: { fill: '1A3A5C', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
+          children: [para(txt(fmt(agentConservative), { bold: true, color: WHITE, size: 20 }))] }),
+        new TableCell({ width: { size: portColW[2], type: WidthType.DXA }, shading: { fill: '0E8070', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
+          children: [para(txt(fmt(agentFullPotential), { bold: true, color: WHITE, size: 20 }))] }),
+      ] }),
+    ],
+  }))
+  children.push(spacer(80))
+  children.push(new Paragraph({
+    spacing: { before: 0, after: 160 },
+    children: [new TextRun({ text: 'Agent values are estimated based on this organization\'s specific profile, industry, and geography. Actual results will vary based on implementation depth, team adoption, and integration with existing systems. Individual agent ROI is realized incrementally as each agent is deployed and optimized.', font: 'Arial', size: 17, italics: true, color: FTNOTE })],
+  }))
 
   // ── COMPETITIVE URGENCY ─────────────────────────────────────────────────────
   children.push(spacer(200), sectionHeader('The Cost of Waiting', NAVY), spacer(80))

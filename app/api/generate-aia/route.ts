@@ -59,8 +59,15 @@ const CM = { top: 120, bottom: 120, left: 160, right: 160 }
 
 function primaryAgentCard(
   rank: number, name: string, tagline: string,
-  companyName: string, whyThisCompany: string, description: string, impact: string
+  companyName: string, whyThisCompany: string, description: string,
+  roiTier: string, estimatedTimeSavedMonthly: string, estimatedAnnualValue: string, roiMethodology: string
 ) {
+  const roiDetail = [
+    estimatedTimeSavedMonthly && estimatedTimeSavedMonthly !== 'N/A' ? `Est. time saved: ${estimatedTimeSavedMonthly}` : '',
+    estimatedAnnualValue ? `Est. annual value: ${estimatedAnnualValue}` : '',
+    roiMethodology || '',
+  ].filter(Boolean).join('  |  ')
+
   return new Table({
     width: { size: CW, type: WidthType.DXA },
     columnWidths: [1200, CW - 1200],
@@ -88,9 +95,12 @@ function primaryAgentCard(
       ] }),
       new TableRow({ children: [
         new TableCell({ width: { size: 1200, type: WidthType.DXA }, shading: { fill: GOLD, type: ShadingType.CLEAR }, borders: aNB(), margins: CM, verticalAlign: VerticalAlign.CENTER,
-          children: [para(txt('IMPACT', { bold: true, color: WHITE, size: 19, caps: true }), { align: AlignmentType.CENTER })] }),
+          children: [para(txt('ROI', { bold: true, color: WHITE, size: 19, caps: true }), { align: AlignmentType.CENTER })] }),
         new TableCell({ width: { size: CW - 1200, type: WidthType.DXA }, shading: { fill: 'FEF9E7', type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
-          children: [para(txt(impact, { bold: true, color: '7D6608', size: 21 }))] }),
+          children: [
+            para(txt(roiTier, { bold: true, color: '7D6608', size: 21 }), { after: 60 }),
+            para(txt(roiDetail, { color: '7D6608', size: 19 }), { after: 0 }),
+          ] }),
       ] }),
     ],
   })
@@ -134,6 +144,18 @@ export async function POST(req: NextRequest) {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const children: any[] = []
+
+  // ── DOCUMENT TITLE ─────────────────────────────────────────────────────────
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 0, after: 60 },
+    children: [new TextRun({ text: 'Agentic Impact Assessment', font: 'Arial', size: 36, bold: true, color: NAVY, allCaps: true })],
+  }))
+  children.push(new Paragraph({
+    alignment: AlignmentType.CENTER,
+    spacing: { before: 0, after: 200 },
+    children: [new TextRun({ text: `Prepared exclusively for ${shortName}`, font: 'Arial', size: 22, color: DGRAY, italics: true })],
+  }))
 
   // ── HEADER BANNER ──────────────────────────────────────────────────────────
   children.push(new Table({
@@ -232,15 +254,63 @@ export async function POST(req: NextRequest) {
     const a = primaryAgents[0]
     children.push(spacer(200), sectionHeader('Our Top Recommendation', NAVY), spacer(80))
     children.push(para(txt('Based on our assessment, this agent addresses your most significant automation opportunity:', { size: 22 }), { after: 160 }))
-    children.push(primaryAgentCard(a.rank, a.name, a.tagline, shortName, a.whyThisCompany, a.description, a.impact))
+    children.push(primaryAgentCard(a.rank, a.name, a.tagline, shortName, a.whyThisCompany, a.description, a.roiTier, a.estimatedTimeSavedMonthly, a.estimatedAnnualValue, a.roiMethodology))
   }
 
   // ── PRIMARY AGENT 2 ────────────────────────────────────────────────────────
   if (primaryAgents[1]) {
     const a = primaryAgents[1]
-    children.push(spacer(200), sectionHeader('Bonus Opportunity — While We’re At It', TEAL), spacer(80))
-    children.push(para(txt('One additional high-impact agent came up during our assessment that creates immediate, compounding value:', { size: 22 }), { after: 160 }))
-    children.push(primaryAgentCard(a.rank, a.name, a.tagline, shortName, a.whyThisCompany, a.description, a.impact))
+    children.push(spacer(200), sectionHeader("Bonus Opportunity — While We’re At It", TEAL), spacer(80))
+    children.push(para(txt("One additional high-impact agent came up during our assessment that creates immediate, compounding value:", { size: 22 }), { after: 160 }))
+    children.push(primaryAgentCard(a.rank, a.name, a.tagline, shortName, a.whyThisCompany, a.description, a.roiTier, a.estimatedTimeSavedMonthly, a.estimatedAnnualValue, a.roiMethodology))
+  }
+
+  // ── VALUE SUMMARY ───────────────────────────────────────────────────────────
+  {
+    const summaryRows: [string, string][] = [
+      ['Hours Saved Per Knowledge Worker / Week', '5.9 – 7.2 hrs  (McKinsey, Salesforce, Microsoft — 2026)'],
+    ]
+    if (primaryAgents[0]) {
+      if (primaryAgents[0].estimatedTimeSavedMonthly && primaryAgents[0].estimatedTimeSavedMonthly !== 'N/A')
+        summaryRows.push([`${primaryAgents[0].name} — Est. Monthly Time Savings`, primaryAgents[0].estimatedTimeSavedMonthly])
+      summaryRows.push([`${primaryAgents[0].name} — Est. Annual Value`, primaryAgents[0].estimatedAnnualValue])
+    }
+    if (primaryAgents[1]) {
+      summaryRows.push([`${primaryAgents[1].name} — Est. Annual Value`, primaryAgents[1].estimatedAnnualValue])
+    }
+    summaryRows.push(
+      ['Average AI Automation ROI — First 18 Months', '250%  (McKinsey, 2025)'],
+      ['Average Operational Cost Reduction — Year 1', '35% of automated function costs  (McKinsey, 2025)'],
+    )
+
+    children.push(spacer(200), sectionHeader('Value Summary', NAVY), spacer(80))
+    children.push(new Table({
+      width: { size: CW, type: WidthType.DXA },
+      columnWidths: [5200, CW - 5200],
+      borders: aB(MGRAY),
+      rows: [
+        new TableRow({ children: [
+          new TableCell({ width: { size: 5200, type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
+            children: [para(txt('Metric', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+          new TableCell({ width: { size: CW - 5200, type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
+            children: [
+              para(txt('Estimated Benchmark', { bold: true, color: WHITE, size: 20, caps: true }), { after: 0 }),
+              para(txt('(conservative)', { color: 'A9CCE3', size: 16, italic: true }), { before: 0 }),
+            ] }),
+        ] }),
+        ...summaryRows.map(([metric, value], i) => new TableRow({ children: [
+          new TableCell({ width: { size: 5200, type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'D6EAF8' : 'EAF2FB', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
+            children: [para(txt(metric, { bold: true, color: NAVY, size: 20 }))] }),
+          new TableCell({ width: { size: CW - 5200, type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'FEF9E7' : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
+            children: [para(txt(value, { bold: true, color: '7D6608', size: 20 }))] }),
+        ] })),
+      ],
+    }))
+    children.push(spacer(100))
+    children.push(new Paragraph({
+      spacing: { before: 0, after: 160 },
+      children: [new TextRun({ text: '* All estimates based on McKinsey, Salesforce, and Microsoft benchmarks (2025–2026). Actual results will vary based on business size, complexity, adoption rate, and integration requirements. A personalized ROI assessment can be developed during your complimentary AI Readiness Discovery Call.', font: 'Arial', size: 17, italics: true, color: FTNOTE })],
+    }))
   }
 
   // ── EXPANSION AGENTS ────────────────────────────────────────────────────────
@@ -261,7 +331,7 @@ export async function POST(req: NextRequest) {
       ],
     }))
     children.push(spacer(160))
-    children.push(para(txt('With nearly 8,000 agent options available to address specific business needs, the opportunities for operational transformation are vast. As needs are identified and validated, we can continue to optimize your operations for maximum benefit.', { size: 22, color: NAVY }), { after: 120 }))
+    children.push(para(txt('With literally thousands of agent options available to address specific business needs, the opportunities for operational transformation are vast. As needs are identified and validated, we can continue to optimize your operations for maximum benefit.', { size: 22, color: NAVY }), { after: 120 }))
     children.push(para(txt("Every agent you add increases the return on the ones before it. At a certain point, the question shifts from 'which agent next?' to 'what becomes possible when they all work together?'", { size: 22, italic: true, color: NAVY }), { after: 0 }))
   }
 
@@ -362,17 +432,17 @@ export async function POST(req: NextRequest) {
   }
 
   children.push(
-    new Paragraph({ spacing: { before: 0, after: 140 }, children: [new TextRun({ text: 'Astra AI is a New York-based AI consulting firm serving businesses of every size — from ambitious local and regional companies to large-scale U.S. and global enterprise organizations. We design, build, and operate the AI infrastructure that defines what a business becomes in the decade ahead.', font: 'Arial', size: 20, color: DGRAY })] }),
-    new Paragraph({ spacing: { before: 0, after: 140 }, children: [new TextRun({ text: '“Astra AI was founded on the conviction that the companies that win the next decade will not buy intelligence off the shelf — they will install it, deliberately, at the right depth, with a partner who understands the business as well as the technology. That is the work we do.”', font: 'Arial', size: 20, italics: true, color: BLUE })] }),
+    new Paragraph({ spacing: { before: 0, after: 140 }, children: [new TextRun({ text: 'Astra AI is a New York-based AI consulting firm serving businesses of every size — from ambitious local and regional companies to large-scale U.S. and global enterprise organizations. We design, build, and operate the AI infrastructure that defines what a business becomes in the decade ahead.', font: 'Arial', size: 21, color: DGRAY })] }),
+    new Paragraph({ spacing: { before: 0, after: 140 }, children: [new TextRun({ text: '”Astra AI was founded on the conviction that the companies that win the next decade will not buy intelligence off the shelf — they will install it, deliberately, at the right depth, with a partner who understands the business as well as the technology. That is the work we do.”', font: 'Arial', size: 21, italics: true, color: BLUE })] }),
     new Paragraph({ spacing: { before: 0, after: 140 }, children: [
-      new TextRun({ text: 'At the heart of every Astra AI engagement is ', font: 'Arial', size: 20, color: DGRAY }),
-      new TextRun({ text: 'MIND', font: 'Arial', size: 20, bold: true, color: NAVY }),
-      new TextRun({ text: ' — a proprietary Knowledge Graph RAG platform built so systems do not forget what matters about a business. MIND is the persistent memory and context layer that remembers the people, decisions, constraints, and history that define a company. ', font: 'Arial', size: 20, color: DGRAY }),
-      new TextRun({ text: 'It belongs to the client. It travels with their business.', font: 'Arial', size: 20, bold: true, color: DGRAY }),
+      new TextRun({ text: 'At the heart of every Astra AI engagement is ', font: 'Arial', size: 21, color: DGRAY }),
+      new TextRun({ text: 'MIND', font: 'Arial', size: 21, bold: true, color: NAVY }),
+      new TextRun({ text: ' — a proprietary Knowledge Graph RAG platform built so systems do not forget what matters about a business. MIND is the persistent memory and context layer that remembers the people, decisions, constraints, and history that define a company.', font: 'Arial', size: 21, color: DGRAY }),
+      new TextRun({ text: 'It belongs to the client. It travels with their business.', font: 'Arial', size: 21, bold: true, color: DGRAY, break: 1 }),
     ] }),
     new Paragraph({ spacing: { before: 0, after: 0 }, children: [
-      new TextRun({ text: 'From a single agent solving one specific problem, to a full enterprise deployment transforming how an entire organization thinks and operates — ', font: 'Arial', size: 20, color: DGRAY }),
-      new TextRun({ text: 'Astra AI meets you where you are. And builds toward where you want to go.', font: 'Arial', size: 20, bold: true, color: NAVY }),
+      new TextRun({ text: 'From a single agent solving one specific problem, to a full enterprise deployment transforming how an entire organization thinks and operates — ', font: 'Arial', size: 21, color: DGRAY }),
+      new TextRun({ text: 'Astra AI meets you where you are. And builds toward where you want to go.', font: 'Arial', size: 21, bold: true, color: NAVY }),
     ] }),
     spacer(80),
     rule(LGRAY, 60, 60),
