@@ -706,8 +706,9 @@ Plus 3 MIND infrastructure agents (always included):
       width: { size: CW, type: WidthType.DXA }, shading: { fill: 'FEF9E7', type: ShadingType.CLEAR },
       borders: aNB(), margins: { top: 140, bottom: 140, left: 220, right: 220 },
       children: [
-        para(txt(`• $1.8M–$2.7M in Year 1 costs (vs. ${shortName}'s path with Astra AI at a fraction of that)`, { size: 21, color: DGRAY }), { after: 60 }),
-        para(txt('• 6–24 month implementation timelines (vs. 2–4 weeks)', { size: 21, color: DGRAY }), { after: 60 }),
+        para(txt(`• $1.9M–$2.7M in Year 1 costs alone — vs. ${shortName}'s entire first-year investment with Astra AI`, { size: 21, color: DGRAY }), { after: 60 }),
+        para(txt(`• $7.8M–$12M over five years — vs. ${shortName}'s 5-year investment with Astra AI (96% less expensive)`, { size: 21, color: DGRAY }), { after: 60 }),
+        para(txt('• 6–24 month implementation timelines (vs. 2–4 weeks with MIND)', { size: 21, color: DGRAY }), { after: 60 }),
         para(txt('• 87% documented failure rate for DIY knowledge graph builds', { size: 21, color: DGRAY }), { after: 0 }),
       ],
     })] })],
