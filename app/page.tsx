@@ -75,11 +75,13 @@ export default function DashboardPage() {
           Powered by OpenRouter · Deploys to Vercel
         </div>
         <h1 className="text-4xl font-bold tracking-tight leading-tight">
-          Discover, build &amp; deploy<br />
-          <span className="text-primary">AI agents</span> — instantly
+          Agent Prospector
         </h1>
-        <p className="text-muted-foreground text-lg max-w-xl leading-relaxed">
-          Agent Prospector helps you find where AI agents can save time, scaffolds their code automatically, and deploys them to GitHub + Vercel in one click.
+        <p className="text-xl text-muted-foreground font-medium">
+          Discover, build &amp; deploy <span className="text-primary">AI agents</span> — instantly
+        </p>
+        <p className="text-muted-foreground text-base max-w-xl leading-relaxed">
+          Find where AI agents can save time, scaffold their code automatically, and deploy to GitHub + Vercel in one click.
         </p>
         <div className="flex flex-wrap gap-3 pt-1">
           <Link href="/business">

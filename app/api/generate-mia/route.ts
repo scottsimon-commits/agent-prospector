@@ -143,7 +143,7 @@ Given the company profile, generate targeted intelligence for their MIA. Be SPEC
 
 Return ONLY valid JSON, no explanation, no code fences:
 {
-  "knowledgeWorkerPercent": number (10-90, what % of total employees do primarily knowledge/information work — manufacturing ~30%, electronics/distribution ~50%, finance/banking ~70%+),
+  "knowledgeWorkerPercent": number (10-90; RESEARCH this company's actual workforce mix carefully — default to 30% for standard manufacturing/production unless you find specific evidence of significant engineering teams, R&D operations, complex B2B technical sales requiring research, or extensive professional staff; use 40-50% only if company profile clearly indicates knowledge-intensive operations like electronics distribution, technical services, or engineering-heavy manufacturing; finance/banking/professional services 70%+; for manufacturing companies err conservative — 30% is the baseline unless research justifies higher),
   "knowledgeWorkerRationale": "1 sentence — why this % fits this specific company",
   "fullyLoadedWageUSD": number (annual fully-loaded cost including benefits/overhead, specific to industry AND geography — SD/Midwest wages are lower than coastal),
   "wageRationale": "short phrase only — format: 'Regional benchmark for [specific industry type] knowledge workers (fully-loaded) relative to [region/area]' — no additional explanation",
@@ -432,142 +432,8 @@ Plus 3 MIND infrastructure agents (always included):
 
   children.push(para(txt('Productivity Gains', { bold: true, color: NAVY, size: 22 }), { after: 60 }))
   children.push(para(txt(`${kw} knowledge workers × ${fmt(wage)} × 20% productivity improvement = ${fmt(productivityValue)}/year in productivity value`, { size: 21 }), { after: 60 }))
-  children.push(para(txt('Both are independently realized — search time savings reflect direct time recovery, while productivity gains reflect the broader performance uplift when knowledge is instantly accessible.', { italic: true, color: BLUE, size: 21 }), { after: 0 }))
-
-  // ── COMBINED ROI SUMMARY TABLE ──────────────────────────────────────────────
-  children.push(spacer(200), sectionHeader('Combined ROI Summary', NAVY), spacer(80))
-  children.push(para(txt('The total value of the MIND ecosystem — platform infrastructure plus The Transformational 10 agent suite — is shown below across both the conservative and full potential range.', { size: 22 }), { after: 140 }))
-
-  const valCols = [3600, (CW - 3600) >> 1, CW - 3600 - ((CW - 3600) >> 1)]
-  children.push(new Table({
-    width: { size: CW, type: WidthType.DXA },
-    columnWidths: valCols,
-    borders: aB(MGRAY),
-    rows: [
-      new TableRow({ children: [
-        new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: LGRAY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
-          children: [para(txt('Value Source', { bold: true, color: NAVY, size: 20, caps: true }))] }),
-        new TableCell({ width: { size: valCols[1], type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
-          children: [para(txt('Conservative', { bold: true, color: WHITE, size: 20, caps: true }))] }),
-        new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: TEAL, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
-          children: [para(txt('Full Potential', { bold: true, color: WHITE, size: 20, caps: true }))] }),
-      ] }),
-      new TableRow({ children: [
-        new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: 'D6EAF8', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
-          children: [para(txt('MIND Platform', { bold: true, color: NAVY, size: 20 }))] }),
-        new TableCell({ width: { size: valCols[1], type: WidthType.DXA }, shading: { fill: LGRAY, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
-          children: [para(txt(fmt(mindConservative), { bold: true, color: DGRAY, size: 20 }))] }),
-        new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: LGRAY, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
-          children: [para(txt(fmt(mindFullPotential), { bold: true, color: DGRAY, size: 20 }))] }),
-      ] }),
-      new TableRow({ children: [
-        new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: 'EAF2FB', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
-          children: [para(txt('Agent Portfolio (10 Agents)', { bold: true, color: NAVY, size: 20 }))] }),
-        new TableCell({ width: { size: valCols[1], type: WidthType.DXA }, shading: { fill: WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
-          children: [para(txt(fmt(agentConservative), { bold: true, color: DGRAY, size: 20 }))] }),
-        new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
-          children: [para(txt(fmt(agentFullPotential), { bold: true, color: DGRAY, size: 20 }))] }),
-      ] }),
-      new TableRow({ children: [
-        new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
-          children: [para(txt('Combined Annual Value', { bold: true, color: WHITE, size: 21 }))] }),
-        new TableCell({ width: { size: valCols[1], type: WidthType.DXA }, shading: { fill: '1A3A5C', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
-          children: [para(txt(fmt(combinedConservative), { bold: true, color: WHITE, size: 21 }))] }),
-        new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: '0E8070', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
-          children: [para(txt(fmt(combinedFullPotential), { bold: true, color: WHITE, size: 21 }))] }),
-      ] }),
-    ],
-  }))
-  children.push(spacer(80))
-  children.push(new Paragraph({
-    spacing: { before: 0, after: 100 },
-    children: [new TextRun({ text: 'Conservative reflects documented productivity benchmarks with standard adoption. Full Potential reflects comprehensive platform and agent adoption — actual results will vary based on implementation depth, usage, and organizational engagement. MIND Platform and Agent Portfolio values are independently generated; some productivity gains may be realized across both layers.', font: 'Arial', size: 17, italics: true, color: FTNOTE })],
-  }))
+  children.push(para(txt('Both are independently realized — search time savings reflect direct time recovery, while productivity gains reflect the broader performance uplift when knowledge is instantly accessible.', { italic: true, color: BLUE, size: 21 }), { after: 140 }))
   children.push(para(txt(`${fmt(mindConservative)} in annual MIND Platform value alone is the equivalent of ${fteEquivalent > 0 ? fteEquivalent : 1} full-time employee${fteEquivalent !== 1 ? 's\'' : '\'s'} output returned to productive, value-creating work — before a single agent is deployed.`, { italic: true, color: BLUE, size: 22 }), { after: 0 }))
-
-  // ── INVESTMENT & ROI ────────────────────────────────────────────────────────
-  children.push(spacer(200), sectionHeader('Investment & ROI', NAVY), spacer(80))
-  children.push(para(txt('Astra AI offers two MIND deployment paths for enterprise clients. Both deliver identical platform power — the right choice depends on your infrastructure preference and data sovereignty requirements.', { size: 22 }), { after: 160 }))
-
-  const roiCols = [2800, (CW - 2800) >> 1, CW - 2800 - ((CW - 2800) >> 1)]
-  children.push(new Table({
-    width: { size: CW, type: WidthType.DXA },
-    columnWidths: roiCols,
-    borders: aB(MGRAY),
-    rows: [
-      // Column headers
-      new TableRow({ children: [
-        new TableCell({ width: { size: roiCols[0], type: WidthType.DXA }, shading: { fill: LGRAY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
-          children: [para(txt('', { size: 18 }))] }),
-        new TableCell({ width: { size: roiCols[1], type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
-          children: [
-            para(txt('Business Builder', { bold: true, color: WHITE, size: 21, caps: true }), { after: 40 }),
-            para(txt('Build · Launch · Grow', { color: 'A9CCE3', size: 17, italic: true }), { after: 0 }),
-          ] }),
-        new TableCell({ width: { size: roiCols[2], type: WidthType.DXA }, shading: { fill: BLUE, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
-          children: [
-            para(txt('Self-Hosted MIND', { bold: true, color: WHITE, size: 21, caps: true }), { after: 40 }),
-            para(txt('Own Your Infrastructure', { color: 'D6EAF8', size: 17, italic: true }), { after: 0 }),
-          ] }),
-      ] }),
-      // Investment rows
-      ...([
-        ['Setup Investment', fmt(bbSetup), fmt(shSetup)],
-        ['Monthly Ongoing', `${fmt(bbMonthly)}/month`, `${fmt(shMonthly)}/month`],
-        ['Year 1 Total', fmt(bbY1), fmt(shY1)],
-        ['Annual (Year 2+)', `${fmt(bbAnnual)}/year`, `${fmt(shAnnual)}/year`],
-        ['5-Year Investment', fmt(bb5yr), fmt(sh5yr)],
-      ] as [string, string, string][]).map(([label, bb, sh], i) => new TableRow({ children: [
-        new TableCell({ width: { size: roiCols[0], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'D6EAF8' : 'EAF2FB', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
-          children: [para(txt(label, { bold: true, color: NAVY, size: 20 }))] }),
-        new TableCell({ width: { size: roiCols[1], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? LGRAY : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
-          children: [para(txt(bb, { bold: true, color: DGRAY, size: 20 }))] }),
-        new TableCell({ width: { size: roiCols[2], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? LGRAY : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
-          children: [para(txt(sh, { bold: true, color: DGRAY, size: 20 }))] }),
-      ] })),
-      // ROI subheader
-      new TableRow({ children: [
-        new TableCell({ columnSpan: 3, width: { size: CW, type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 80, bottom: 80, left: 140, right: 140 },
-          children: [para(txt('Return on Investment — Conservative Range', { bold: true, color: WHITE, size: 20, caps: true }))] }),
-      ] }),
-      ...([
-        ['Year 1 ROI (Conservative)', `${bbY1ROIcons}%`, `${shY1ROIcons}%`],
-        ['Payback Period (Conservative)', `~${bbPayback} days`, `~${shPayback} days`],
-        ['5-Year Net Benefit (Conservative)', fmt(bb5yrNetCons), fmt(sh5yrNetCons)],
-        ['5-Year ROI (Conservative)', `${bb5yrROICons}%`, `${sh5yrROICons}%`],
-      ] as [string, string, string][]).map(([label, bb, sh], i) => new TableRow({ children: [
-        new TableCell({ width: { size: roiCols[0], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'D6EAF8' : 'EAF2FB', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
-          children: [para(txt(label, { bold: true, color: NAVY, size: 20 }))] }),
-        new TableCell({ width: { size: roiCols[1], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'FEF9E7' : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
-          children: [para(txt(bb, { bold: true, color: '7D6608', size: 20 }))] }),
-        new TableCell({ width: { size: roiCols[2], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'FEF9E7' : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
-          children: [para(txt(sh, { bold: true, color: '7D6608', size: 20 }))] }),
-      ] })),
-      // Full Potential ROI subheader
-      new TableRow({ children: [
-        new TableCell({ columnSpan: 3, width: { size: CW, type: WidthType.DXA }, shading: { fill: TEAL, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 80, bottom: 80, left: 140, right: 140 },
-          children: [para(txt('Return on Investment — Full Potential Range', { bold: true, color: WHITE, size: 20, caps: true }))] }),
-      ] }),
-      ...([
-        ['Year 1 ROI (Full Potential)', `${bbY1ROIfull}%`, `${shY1ROIfull}%`],
-        ['5-Year Net Benefit (Full Potential)', fmt(bb5yrNetFull), fmt(sh5yrNetFull)],
-        ['5-Year ROI (Full Potential)', `${bb5yrROIFull}%`, `${sh5yrROIFull}%`],
-      ] as [string, string, string][]).map(([label, bb, sh], i) => new TableRow({ children: [
-        new TableCell({ width: { size: roiCols[0], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'E8F8F5' : 'F0FBF8', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
-          children: [para(txt(label, { bold: true, color: TEAL, size: 20 }))] }),
-        new TableCell({ width: { size: roiCols[1], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'D5F5E3' : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
-          children: [para(txt(bb, { bold: true, color: '0E6655', size: 20 }))] }),
-        new TableCell({ width: { size: roiCols[2], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'D5F5E3' : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
-          children: [para(txt(sh, { bold: true, color: '0E6655', size: 20 }))] }),
-      ] })),
-    ],
-  }))
-
-  children.push(spacer(100))
-  children.push(new Paragraph({
-    spacing: { before: 0, after: 160 },
-    children: [new TextRun({ text: 'Business Builder includes full-service consulting, implementation, ongoing optimization, training, and growth support from the Astra AI team. Self-Hosted MIND includes platform licensing and deployment on your own infrastructure — ideal for organizations prioritizing data sovereignty. Agentic integrations and custom solutions are additional for both paths.', font: 'Arial', size: 17, italics: true, color: FTNOTE })],
-  }))
 
   // ── SPECIFIC IMPACT AREAS ───────────────────────────────────────────────────
   if (intel.specificImpactAreas?.length > 0) {
@@ -697,6 +563,135 @@ Plus 3 MIND infrastructure agents (always included):
   children.push(new Paragraph({
     spacing: { before: 0, after: 160 },
     children: [new TextRun({ text: 'Agent values are estimated based on this organization\'s specific profile, industry, and geography. Actual results will vary based on implementation depth, team adoption, and integration with existing systems. Individual agent ROI is realized incrementally as each agent is deployed and optimized.', font: 'Arial', size: 17, italics: true, color: FTNOTE })],
+  }))
+
+  // ── COMBINED ROI SUMMARY TABLE ──────────────────────────────────────────────
+  children.push(spacer(200), sectionHeader('Combined ROI Summary', NAVY), spacer(80))
+  children.push(para(txt('The total value of the MIND ecosystem — platform infrastructure plus The Transformational 10 agent suite — is shown below across both the conservative and full potential range.', { size: 22 }), { after: 140 }))
+
+  const valCols = [3600, (CW - 3600) >> 1, CW - 3600 - ((CW - 3600) >> 1)]
+  children.push(new Table({
+    width: { size: CW, type: WidthType.DXA },
+    columnWidths: valCols,
+    borders: aB(MGRAY),
+    rows: [
+      new TableRow({ children: [
+        new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: LGRAY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
+          children: [para(txt('Value Source', { bold: true, color: NAVY, size: 20, caps: true }))] }),
+        new TableCell({ width: { size: valCols[1], type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
+          children: [para(txt('Conservative', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+        new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: TEAL, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
+          children: [para(txt('Full Potential', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+      ] }),
+      new TableRow({ children: [
+        new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: 'D6EAF8', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
+          children: [para(txt('MIND Platform', { bold: true, color: NAVY, size: 20 }))] }),
+        new TableCell({ width: { size: valCols[1], type: WidthType.DXA }, shading: { fill: LGRAY, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
+          children: [para(txt(fmt(mindConservative), { bold: true, color: DGRAY, size: 20 }))] }),
+        new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: LGRAY, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
+          children: [para(txt(fmt(mindFullPotential), { bold: true, color: DGRAY, size: 20 }))] }),
+      ] }),
+      new TableRow({ children: [
+        new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: 'EAF2FB', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
+          children: [para(txt('Agent Portfolio (10 Agents)', { bold: true, color: NAVY, size: 20 }))] }),
+        new TableCell({ width: { size: valCols[1], type: WidthType.DXA }, shading: { fill: WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
+          children: [para(txt(fmt(agentConservative), { bold: true, color: DGRAY, size: 20 }))] }),
+        new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
+          children: [para(txt(fmt(agentFullPotential), { bold: true, color: DGRAY, size: 20 }))] }),
+      ] }),
+      new TableRow({ children: [
+        new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
+          children: [para(txt('Combined Annual Value', { bold: true, color: WHITE, size: 21 }))] }),
+        new TableCell({ width: { size: valCols[1], type: WidthType.DXA }, shading: { fill: '1A3A5C', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
+          children: [para(txt(fmt(combinedConservative), { bold: true, color: WHITE, size: 21 }))] }),
+        new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: '0E8070', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
+          children: [para(txt(fmt(combinedFullPotential), { bold: true, color: WHITE, size: 21 }))] }),
+      ] }),
+    ],
+  }))
+  children.push(spacer(80))
+  children.push(new Paragraph({
+    spacing: { before: 0, after: 160 },
+    children: [new TextRun({ text: 'Conservative reflects documented productivity benchmarks with standard adoption. Full Potential reflects comprehensive platform and agent adoption — actual results will vary based on implementation depth, usage, and organizational engagement. MIND Platform and Agent Portfolio values are independently generated; some productivity gains may be realized across both layers.', font: 'Arial', size: 17, italics: true, color: FTNOTE })],
+  }))
+
+  // ── INVESTMENT & ROI ────────────────────────────────────────────────────────
+  children.push(spacer(200), sectionHeader('Investment & ROI', NAVY), spacer(80))
+  children.push(para(txt('Astra AI offers two MIND deployment paths for enterprise clients. Both deliver identical platform power — the right choice depends on your infrastructure preference and data sovereignty requirements.', { size: 22 }), { after: 160 }))
+
+  const roiCols = [2800, (CW - 2800) >> 1, CW - 2800 - ((CW - 2800) >> 1)]
+  children.push(new Table({
+    width: { size: CW, type: WidthType.DXA },
+    columnWidths: roiCols,
+    borders: aB(MGRAY),
+    rows: [
+      new TableRow({ children: [
+        new TableCell({ width: { size: roiCols[0], type: WidthType.DXA }, shading: { fill: LGRAY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
+          children: [para(txt('', { size: 18 }))] }),
+        new TableCell({ width: { size: roiCols[1], type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
+          children: [
+            para(txt('Business Builder', { bold: true, color: WHITE, size: 21, caps: true }), { after: 40 }),
+            para(txt('Build · Launch · Grow', { color: 'A9CCE3', size: 17, italic: true }), { after: 0 }),
+          ] }),
+        new TableCell({ width: { size: roiCols[2], type: WidthType.DXA }, shading: { fill: BLUE, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
+          children: [
+            para(txt('Self-Hosted MIND', { bold: true, color: WHITE, size: 21, caps: true }), { after: 40 }),
+            para(txt('Own Your Infrastructure', { color: 'D6EAF8', size: 17, italic: true }), { after: 0 }),
+          ] }),
+      ] }),
+      ...([
+        ['Setup Investment', fmt(bbSetup), fmt(shSetup)],
+        ['Monthly Ongoing', `${fmt(bbMonthly)}/month`, `${fmt(shMonthly)}/month`],
+        ['Year 1 Total', fmt(bbY1), fmt(shY1)],
+        ['Annual (Year 2+)', `${fmt(bbAnnual)}/year`, `${fmt(shAnnual)}/year`],
+        ['5-Year Investment', fmt(bb5yr), fmt(sh5yr)],
+      ] as [string, string, string][]).map(([label, bb, sh], i) => new TableRow({ children: [
+        new TableCell({ width: { size: roiCols[0], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'D6EAF8' : 'EAF2FB', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [para(txt(label, { bold: true, color: NAVY, size: 20 }))] }),
+        new TableCell({ width: { size: roiCols[1], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? LGRAY : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [para(txt(bb, { bold: true, color: DGRAY, size: 20 }))] }),
+        new TableCell({ width: { size: roiCols[2], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? LGRAY : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [para(txt(sh, { bold: true, color: DGRAY, size: 20 }))] }),
+      ] })),
+      new TableRow({ children: [
+        new TableCell({ columnSpan: 3, width: { size: CW, type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 80, bottom: 80, left: 140, right: 140 },
+          children: [para(txt('Return on Investment — Conservative Range', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+      ] }),
+      ...([
+        ['Year 1 ROI (Conservative)', `${bbY1ROIcons}%`, `${shY1ROIcons}%`],
+        ['Payback Period (Conservative)', `~${bbPayback} days`, `~${shPayback} days`],
+        ['5-Year Net Benefit (Conservative)', fmt(bb5yrNetCons), fmt(sh5yrNetCons)],
+        ['5-Year ROI (Conservative)', `${bb5yrROICons}%`, `${sh5yrROICons}%`],
+      ] as [string, string, string][]).map(([label, bb, sh], i) => new TableRow({ children: [
+        new TableCell({ width: { size: roiCols[0], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'D6EAF8' : 'EAF2FB', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [para(txt(label, { bold: true, color: NAVY, size: 20 }))] }),
+        new TableCell({ width: { size: roiCols[1], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'FEF9E7' : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [para(txt(bb, { bold: true, color: '7D6608', size: 20 }))] }),
+        new TableCell({ width: { size: roiCols[2], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'FEF9E7' : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [para(txt(sh, { bold: true, color: '7D6608', size: 20 }))] }),
+      ] })),
+      new TableRow({ children: [
+        new TableCell({ columnSpan: 3, width: { size: CW, type: WidthType.DXA }, shading: { fill: TEAL, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 80, bottom: 80, left: 140, right: 140 },
+          children: [para(txt('Return on Investment — Full Potential Range', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+      ] }),
+      ...([
+        ['Year 1 ROI (Full Potential)', `${bbY1ROIfull}%`, `${shY1ROIfull}%`],
+        ['5-Year Net Benefit (Full Potential)', fmt(bb5yrNetFull), fmt(sh5yrNetFull)],
+        ['5-Year ROI (Full Potential)', `${bb5yrROIFull}%`, `${sh5yrROIFull}%`],
+      ] as [string, string, string][]).map(([label, bb, sh], i) => new TableRow({ children: [
+        new TableCell({ width: { size: roiCols[0], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'E8F8F5' : 'F0FBF8', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [para(txt(label, { bold: true, color: TEAL, size: 20 }))] }),
+        new TableCell({ width: { size: roiCols[1], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'D5F5E3' : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [para(txt(bb, { bold: true, color: '0E6655', size: 20 }))] }),
+        new TableCell({ width: { size: roiCols[2], type: WidthType.DXA }, shading: { fill: i % 2 === 0 ? 'D5F5E3' : WHITE, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 90, bottom: 90, left: 140, right: 120 },
+          children: [para(txt(sh, { bold: true, color: '0E6655', size: 20 }))] }),
+      ] })),
+    ],
+  }))
+  children.push(spacer(100))
+  children.push(new Paragraph({
+    spacing: { before: 0, after: 160 },
+    children: [new TextRun({ text: 'Business Builder includes full-service consulting, implementation, ongoing optimization, training, and growth support from the Astra AI team. Self-Hosted MIND includes platform licensing and deployment on your own infrastructure — ideal for organizations prioritizing data sovereignty. Agentic integrations and custom solutions are additional for both paths.', font: 'Arial', size: 17, italics: true, color: FTNOTE })],
   }))
 
   // ── COMPETITIVE URGENCY ─────────────────────────────────────────────────────

@@ -38,7 +38,7 @@ function buildResearchBrief(research: {
   }
 
   if (research.linkedInContent) {
-    sections.push(`=== LINKEDIN PROFILE (${research.linkedInUrl}) ===\n${research.linkedInContent}`)
+    sections.push(`=== LINKEDIN PROFILE (${research.linkedInUrl}) — cross-check against other sources ===\n${research.linkedInContent}`)
   } else if (research.linkedInUrl) {
     sections.push(`=== LINKEDIN PROFILE ===\nFound at ${research.linkedInUrl} but content could not be fetched.`)
   }
@@ -78,7 +78,7 @@ Location: ${location}${context ? `\nAdditional context: ${context}` : ''}
 
 ${researchBrief}
 
-Prioritize the website content as your primary source. Use LinkedIn for team/company size details. Use search results for supplementary context. Return the complete JSON response only.`
+Prioritize the website content as your primary source. For employee count and estimatedSize: (1) use the company website if it states headcount, (2) otherwise use LinkedIn's stated range exactly as written, (3) use ZoomInfo/D&B to cross-check if LinkedIn and the website conflict. Always output the value as stated in the source — do not round or narrow a range. Return the complete JSON response only.`
 
   try {
     const messages = [
@@ -88,37 +88,44 @@ Prioritize the website content as your primary source. Use LinkedIn for team/com
 
     let response
 
-    // Groq first (fast LPU inference, free tier) — OpenRouter free tier is too slow
+    // Groq primary → Groq fallback (on rate limit only)
     if (process.env.GROQ_API_KEY) {
       const groq = getGroqClient()
       try {
         response = await groq.chat.completions.create({
           model: GROQ_MODEL,
           stream: false,
-          max_tokens: 2000,
+          max_tokens: 4000,
           messages,
         })
       } catch (e) {
         const msg = e instanceof Error ? e.message : ''
         if (msg.includes('429') || msg.includes('rate')) {
-          response = await groq.chat.completions.create({
-            model: GROQ_FALLBACK_MODEL,
-            stream: false,
-            max_tokens: 2000,
-            messages,
-          })
+          try {
+            response = await groq.chat.completions.create({
+              model: GROQ_FALLBACK_MODEL,
+              stream: false,
+              max_tokens: 4000,
+              messages,
+            })
+          } catch {
+            return new Response(
+              JSON.stringify({ error: 'Groq is temporarily overloaded. Please wait 30 seconds and try again.' }),
+              { status: 429, headers: { 'Content-Type': 'application/json' } }
+            )
+          }
         } else {
           throw e
         }
       }
     } else {
-      // OpenRouter fallback (slower on free tier)
+      // No Groq key — OpenRouter only
       const client = getOpenRouterClient()
       try {
         response = await client.chat.completions.create({
           model: BUSINESS_PROSPECT_MODEL,
           stream: false,
-          max_tokens: 2000,
+          max_tokens: 4000,
           messages,
         })
       } catch (e) {
@@ -127,7 +134,7 @@ Prioritize the website content as your primary source. Use LinkedIn for team/com
           response = await client.chat.completions.create({
             model: BUSINESS_PROSPECT_FALLBACK_MODEL,
             stream: false,
-            max_tokens: 2000,
+            max_tokens: 4000,
             messages,
           })
         } else {
@@ -135,7 +142,6 @@ Prioritize the website content as your primary source. Use LinkedIn for team/com
         }
       }
     }
-
     const content = response.choices[0]?.message?.content ?? ''
     const jsonStr = stripJsonFences(content)
     const data = JSON.parse(jsonStr)

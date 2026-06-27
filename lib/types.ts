@@ -83,7 +83,10 @@ export interface AgentRecommendation {
   tagline: string
   description: string
   whyThisCompany: string
-  impact: string
+  roiTier: string
+  estimatedTimeSavedMonthly: string
+  estimatedAnnualValue: string
+  roiMethodology: string
   tools: string[]
   complexity: 'low' | 'medium' | 'high'
   implementationTime: string
