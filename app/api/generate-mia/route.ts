@@ -114,10 +114,11 @@ export async function POST(req: NextRequest) {
   let body: unknown
   try { body = await req.json() } catch { return new Response('Invalid JSON', { status: 400 }) }
 
-  const { companyName, location, result } = body as {
+  const { companyName, location, result, additionalContext } = body as {
     companyName: string
     location: string
     result: BusinessProspectResult
+    additionalContext?: string
   }
 
   if (!companyName || !result?.company) {
@@ -143,7 +144,7 @@ Given the company profile, generate targeted intelligence for their MIA. Be SPEC
 
 Return ONLY valid JSON, no explanation, no code fences:
 {
-  "knowledgeWorkerPercent": number (10-90; RESEARCH this company's actual workforce mix carefully — default to 30% for standard manufacturing/production unless you find specific evidence of significant engineering teams, R&D operations, complex B2B technical sales requiring research, or extensive professional staff; use 40-50% only if company profile clearly indicates knowledge-intensive operations like electronics distribution, technical services, or engineering-heavy manufacturing; finance/banking/professional services 70%+; for manufacturing companies err conservative — 30% is the baseline unless research justifies higher),
+  "knowledgeWorkerPercent": number (10-90; IMPORTANT: if the user has specified a knowledge worker percentage in the Additional Context below, use that exact value and do not override it; otherwise RESEARCH this company's actual workforce mix carefully — default to 30% for standard manufacturing/production unless you find specific evidence of significant engineering teams, R&D operations, complex B2B technical sales requiring research, or extensive professional staff; use 40-50% only if company profile clearly indicates knowledge-intensive operations like electronics distribution, technical services, or engineering-heavy manufacturing; finance/banking/professional services 70%+; for manufacturing companies err conservative — 30% is the baseline unless research clearly justifies higher),
   "knowledgeWorkerRationale": "1 sentence — why this % fits this specific company",
   "fullyLoadedWageUSD": number (annual fully-loaded cost including benefits/overhead, specific to industry AND geography — SD/Midwest wages are lower than coastal),
   "wageRationale": "short phrase only — format: 'Regional benchmark for [specific industry type] knowledge workers (fully-loaded) relative to [region/area]' — no additional explanation",
@@ -183,7 +184,7 @@ ${aiaAgents.map(r => `- ${r.name} (${r.category}): ${r.description}`).join('\n')
 Plus 3 MIND infrastructure agents (always included):
 - Knowledge Capture Agent (Knowledge Infrastructure): Continuously extracts and indexes institutional knowledge from meetings, conversations, documents, and expert sessions into the MIND knowledge graph.
 - Cross-System Intelligence Agent (Enterprise Integration): Bridges ERP, CRM, email platform, production systems, and document libraries into a single intelligent query layer powered by MIND.
-- Onboarding Intelligence Agent (Human Capital): Delivers personalized, conversational access to the organization's complete institutional memory for new hires — reducing ramp time from ~6 months to ~2.5 months.`
+- Onboarding Intelligence Agent (Human Capital): Delivers personalized, conversational access to the organization's complete institutional memory for new hires — reducing ramp time from ~6 months to ~2.5 months.${additionalContext ? `\n\nAdditional Context (provided by consultant — treat any specific values here as overrides):\n${additionalContext}` : ''}`
 
   let intel: MIAIntel
   try {

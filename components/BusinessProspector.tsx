@@ -423,7 +423,7 @@ export default function BusinessProspector() {
       const res = await fetch('/api/generate-mia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ companyName: companyName.trim(), location: location.trim(), result }),
+        body: JSON.stringify({ companyName: companyName.trim(), location: location.trim(), result, additionalContext: context.trim() || undefined }),
       })
       if (!res.ok) {
         toast.error('Failed to generate MIA report')
