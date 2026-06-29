@@ -476,7 +476,10 @@ Plus 3 MIND infrastructure agents (always included):
       ] })),
       new TableRow({ children: [
         new TableCell({ columnSpan: 3, width: { size: CW, type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 80, bottom: 80, left: 140, right: 140 },
-          children: [para(txt('Return on Investment — Conservative Range', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+          children: [
+            para(txt('Return on Investment — Conservative Range', { bold: true, color: WHITE, size: 20, caps: true }), { after: 20 }),
+            para(txt('Based on Productivity Value · 20% knowledge worker time recovery', { italic: true, color: 'A9CCE3', size: 17 }), { after: 0 }),
+          ] }),
       ] }),
       ...([
         ['Year 1 ROI (Conservative)', `${bbY1ROIcons}%`, `${shY1ROIcons}%`],
@@ -493,7 +496,10 @@ Plus 3 MIND infrastructure agents (always included):
       ] })),
       new TableRow({ children: [
         new TableCell({ columnSpan: 3, width: { size: CW, type: WidthType.DXA }, shading: { fill: TEAL, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 80, bottom: 80, left: 140, right: 140 },
-          children: [para(txt('Return on Investment — Full Potential Range', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+          children: [
+            para(txt('Return on Investment — Full Potential Range', { bold: true, color: WHITE, size: 20, caps: true }), { after: 20 }),
+            para(txt('Based on Productivity + Search Savings · Full Potential = Conservative × 1.35', { italic: true, color: 'A2D9CE', size: 17 }), { after: 0 }),
+          ] }),
       ] }),
       ...([
         ['Year 1 ROI (Full Potential)', `${bbY1ROIfull}%`, `${shY1ROIfull}%`],
@@ -659,9 +665,15 @@ Plus 3 MIND infrastructure agents (always included):
         new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: LGRAY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
           children: [para(txt('Value Source', { bold: true, color: NAVY, size: 20, caps: true }))] }),
         new TableCell({ width: { size: valCols[1], type: WidthType.DXA }, shading: { fill: NAVY, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
-          children: [para(txt('Conservative', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+          children: [
+            para(txt('Conservative', { bold: true, color: WHITE, size: 20, caps: true }), { after: 20 }),
+            para(txt('Productivity Value', { italic: true, color: 'A9CCE3', size: 17 }), { after: 0 }),
+          ] }),
         new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: TEAL, type: ShadingType.CLEAR }, borders: aNB(), margins: CM,
-          children: [para(txt('Full Potential', { bold: true, color: WHITE, size: 20, caps: true }))] }),
+          children: [
+            para(txt('Full Potential', { bold: true, color: WHITE, size: 20, caps: true }), { after: 20 }),
+            para(txt('Productivity + Search Savings', { italic: true, color: 'A2D9CE', size: 17 }), { after: 0 }),
+          ] }),
       ] }),
       new TableRow({ children: [
         new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: 'D6EAF8', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 100, bottom: 100, left: 140, right: 120 },
