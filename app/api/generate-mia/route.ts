@@ -699,6 +699,14 @@ Plus 3 MIND infrastructure agents (always included):
         new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: '0E8070', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
           children: [para(txt(fmt(combinedFullPotential), { bold: true, color: WHITE, size: 21 }))] }),
       ] }),
+      new TableRow({ children: [
+        new TableCell({ width: { size: valCols[0], type: WidthType.DXA }, shading: { fill: GOLD, type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
+          children: [para(txt('Combined 5-Year Value', { bold: true, color: WHITE, size: 21 }))] }),
+        new TableCell({ width: { size: valCols[1], type: WidthType.DXA }, shading: { fill: 'B7950B', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
+          children: [para(txt(fmt(combinedConservative * 5), { bold: true, color: WHITE, size: 21 }))] }),
+        new TableCell({ width: { size: valCols[2], type: WidthType.DXA }, shading: { fill: '9A7D0A', type: ShadingType.CLEAR }, borders: aNB(), margins: { top: 110, bottom: 110, left: 140, right: 120 },
+          children: [para(txt(fmt(combinedFullPotential * 5), { bold: true, color: WHITE, size: 21 }))] }),
+      ] }),
     ],
   }))
   children.push(spacer(80))
